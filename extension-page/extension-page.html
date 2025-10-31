@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Context Generator - Full Page</title>
+  <link rel="stylesheet" href="extension-page.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>Smart Context Generator</h1>
+      <button id="settings-btn" class="btn-icon">⚙️</button>
+    </header>
+
+    <div class="main-content">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>Sessions</h2>
+          <button id="new-session-btn" class="btn-primary-small">+ New</button>
+        </div>
+        <div id="sessions-list" class="sessions-list">
+          <p class="empty-state">No sessions yet</p>
+        </div>
+      </aside>
+
+      <main class="detail-view">
+        <div id="no-session-view" class="no-session-view">
+          <p>Select a session or create a new one to get started</p>
+        </div>
+
+        <div id="session-detail-view" class="session-detail-view" style="display: none;">
+          <div class="session-header">
+            <input type="text" id="session-name" class="session-name-input" placeholder="Session name">
+            <div class="session-meta">
+              <span id="session-created">Created: --</span>
+              <span id="session-items">Items: 0</span>
+            </div>
+          </div>
+
+          <section class="task-section">
+            <h3>Task Description:</h3>
+            <textarea 
+              id="task-description" 
+              placeholder="Describe the task or issue you're working on..."
+              rows="4"
+            ></textarea>
+          </section>
+
+          <section class="context-section">
+            <div class="section-header">
+              <h3>Context Items:</h3>
+              <div class="context-actions">
+                <button id="upload-file-btn" class="btn-secondary-small">📁 Upload</button>
+                <button id="screenshot-btn" class="btn-secondary-small">📸 Screenshot</button>
+                <button id="extract-tab-btn" class="btn-secondary-small">📄 Extract Tab</button>
+              </div>
+            </div>
+            <input type="file" id="file-input" multiple style="display: none;">
+            <div id="context-items-grid" class="context-items-grid">
+              <p class="empty-state">No context items yet</p>
+            </div>
+          </section>
+
+          <section class="optimization-section">
+            <button id="optimize-btn" class="btn-primary-large">
+              🚀 Optimize Context
+            </button>
+            
+            <div id="status-section" class="status-section" style="display: none;">
+              <div class="status-content">
+                <div class="spinner"></div>
+                <p id="status-text">Processing...</p>
+              </div>
+            </div>
+
+            <div id="result-section" class="result-section" style="display: none;">
+              <h3>Optimized Prompt:</h3>
+              <div id="result-content" class="result-content"></div>
+              <button id="copy-btn" class="btn-primary">📋 Copy to Clipboard</button>
+            </div>
+          </section>
+
+          <section class="history-section">
+            <h3>Optimization History:</h3>
+            <div id="history-list" class="history-list">
+              <p class="empty-state">No optimization history yet</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="extension-page.js" type="module"></script>
+</body>
+</html>

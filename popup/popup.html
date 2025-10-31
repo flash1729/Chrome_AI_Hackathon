@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Context Generator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Smart Context Generator</h1>
+    </header>
+
+    <section class="session-section">
+      <label for="session-select">Session:</label>
+      <div class="session-controls">
+        <select id="session-select">
+          <option value="">Select a session...</option>
+        </select>
+        <button id="new-session-btn" class="btn-secondary">+ New</button>
+      </div>
+    </section>
+
+    <section class="task-section">
+      <label for="task-input">Task/Issue:</label>
+      <textarea 
+        id="task-input" 
+        placeholder="Describe the task or issue you're working on..."
+        rows="3"
+      ></textarea>
+    </section>
+
+    <section class="context-section">
+      <h3>Add Context:</h3>
+      <div class="context-buttons">
+        <button id="upload-file-btn" class="btn-context">
+          📁 Upload Files
+        </button>
+        <button id="screenshot-btn" class="btn-context">
+          📸 Screenshot
+        </button>
+        <button id="extract-tab-btn" class="btn-context">
+          📄 Extract Tab Content
+        </button>
+      </div>
+      <input type="file" id="file-input" multiple style="display: none;">
+    </section>
+
+    <section class="context-items-section">
+      <h3>Context Items (<span id="context-count">0</span>):</h3>
+      <div id="context-items-list" class="context-items-list">
+        <p class="empty-state">No context items yet</p>
+      </div>
+    </section>
+
+    <section class="actions-section">
+      <button id="optimize-btn" class="btn-primary" disabled>
+        🚀 Optimize Context
+      </button>
+      <button id="open-page-btn" class="btn-secondary">
+        📋 Open Full Page
+      </button>
+    </section>
+
+    <section id="status-section" class="status-section" style="display: none;">
+      <div class="status-content">
+        <div class="spinner"></div>
+        <p id="status-text">Processing...</p>
+      </div>
+    </section>
+
+    <section id="result-section" class="result-section" style="display: none;">
+      <h3>Optimized Prompt:</h3>
+      <div id="result-content" class="result-content"></div>
+      <button id="copy-btn" class="btn-primary">📋 Copy to Clipboard</button>
+    </section>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
