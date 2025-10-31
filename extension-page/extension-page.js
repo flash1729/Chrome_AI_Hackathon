@@ -496,9 +496,10 @@ async function reloadSession() {
  */
 function updateOptimizeButton() {
   const hasTask = currentSession?.taskDescription?.trim().length > 0;
-  const hasContext = currentSession?.contextItems?.length > 0;
   
-  optimizeBtn.disabled = !hasTask || !hasContext;
+  // Enable button if user has entered a task, even without explicit context
+  // The API call flow will handle context searching automatically
+  optimizeBtn.disabled = !hasTask;
 }
 
 /**
