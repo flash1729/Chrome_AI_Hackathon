@@ -23,6 +23,46 @@ header {
   border-bottom: 2px solid #4285f4;
 }
 
+.api-key-section {
+  padding: 16px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.api-key-warning {
+  font-weight: 600;
+  color: #856404;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+#api-key-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  font-family: 'Courier New', monospace;
+}
+
+.api-key-help {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+}
+
+.api-key-help a {
+  color: #4285f4;
+  text-decoration: none;
+}
+
+.api-key-help a:hover {
+  text-decoration: underline;
+}
+
 h1 {
   font-size: 18px;
   font-weight: 600;

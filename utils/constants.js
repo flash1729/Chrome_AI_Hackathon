@@ -1,5 +1,7 @@
 // Gemini API Configuration
-export const GEMINI_API_KEY = "AIzaSyD5GIkfzZSazRkapQuKxE8dHGYUu3aN31E";
+// API key is now stored securely in Chrome storage
+// Users must set their own API key through the extension settings
+export const GEMINI_API_KEY = null; // Deprecated: Use getApiKey() from storage.js instead
 
 export const GEMINI_CONFIG = {
   model: "gemini-2.5-flash", // Use flash initially, it's faster and cheaper for testing

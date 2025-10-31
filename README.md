@@ -15,34 +15,40 @@ A Chrome extension for the Google Chrome Built-in AI Challenge 2025 that intelli
 ### Prerequisites
 
 1. Google Chrome browser
-2. Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ### Installation
 
 1. **Clone or download this repository**
 
-2. **Add your Gemini API key**
-   - Open `utils/constants.js`
-   - Replace `YOUR_GEMINI_API_KEY_HERE` with your actual Gemini API key
-
-3. **Create placeholder icons** (temporary for MVP)
-   - Create three PNG files in the `icons/` directory:
-     - `icon16.png` (16x16 pixels)
-     - `icon48.png` (48x48 pixels)
-     - `icon128.png` (128x128 pixels)
-   - You can use any simple colored squares or generate icons online
-
-4. **Load the extension in Chrome**
+2. **Load the extension in Chrome**
    - Open Chrome and navigate to `chrome://extensions/`
    - Enable "Developer mode" (toggle in top right)
    - Click "Load unpacked"
    - Select the extension directory
 
-5. **Start using the extension**
-   - Click the extension icon in the toolbar to open the popup
+3. **Configure your API key**
+   - Click the extension icon in the toolbar
+   - You'll see a warning that an API key is required
+   - Get your API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Enter your API key in the provided field
+   - Click "Save API Key"
+   - Your API key is stored securely in Chrome's local storage
+
+4. **Start using the extension**
    - Create a new session
    - Add context (files, screenshots, tab content)
    - Click "Optimize Context" to generate an optimized prompt
+
+### Security Note
+
+**Your API key is stored securely:**
+- Stored in Chrome's `chrome.storage.local` (encrypted by Chrome)
+- Never transmitted anywhere except to Google's Gemini API
+- Not synced across devices
+- Can be removed anytime via the settings button (⚙️)
+
+See [SECURITY.md](SECURITY.md) for detailed security information.
 
 ## Usage
 
@@ -128,21 +134,30 @@ Click "📋 Open Full Page" for a comprehensive view with:
 - Check the Chrome Extensions page for error messages
 
 ### API errors
-- Verify your Gemini API key is correct in `utils/constants.js`
-- Check your API quota at [Google AI Studio](https://makersuite.google.com/)
+- Verify your Gemini API key is correct (click settings ⚙️ to update)
+- Check your API quota at [Google AI Studio](https://aistudio.google.com/)
+- Make sure your API key starts with "AIza"
 
 ### Context extraction fails
 - Some websites may block content extraction due to security policies
 - Try using file upload or screenshot instead
 
+## Recent Updates
+
+### ✅ Secure API Key Management (Latest)
+- API keys are no longer hardcoded in the source code
+- Users set their own API key through the extension UI
+- Keys are stored securely in Chrome's local storage
+- Safe to commit code to public repositories
+
 ## Future Enhancements
 
-- Settings UI for API key configuration
 - Export/import sessions
 - Advanced filtering and search
 - Collaborative sessions
 - Custom templates
 - Analytics dashboard
+- Multiple API key profiles
 
 ## License
 

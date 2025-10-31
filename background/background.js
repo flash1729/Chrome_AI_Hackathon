@@ -1,12 +1,9 @@
 import { MessageTypes } from '../utils/constants.js';
 import { SessionManager } from '../utils/session-manager.js';
 import { GeminiAPIHandler } from '../utils/gemini-api.js';
-import { GEMINI_API_KEY } from '../utils/constants.js';
+import { StorageManager } from '../utils/storage.js';
 
 console.log('Background service worker loaded');
-
-// Track active optimization processes
-const activeOptimizations = new Map();
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
@@ -232,8 +229,14 @@ async function handleStartOptimization(payload) {
     // Send status update
     broadcastOptimizationStatus(sessionId, 'Checking context sufficiency...');
     
+    // Get API key from storage
+    const apiKey = await StorageManager.getApiKey();
+    if (!apiKey) {
+      throw new Error('API key not configured. Please set your Gemini API key in settings.');
+    }
+    
     // Initialize Gemini API
-    const gemini = new GeminiAPIHandler(GEMINI_API_KEY);
+    const gemini = new GeminiAPIHandler(apiKey);
     
     // Stage 1: Sufficiency Check
     const sufficiencyResult = await checkContextSufficiency(gemini, session);
