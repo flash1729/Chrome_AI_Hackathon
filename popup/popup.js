@@ -74,7 +74,7 @@ function attachEventListeners() {
 async function checkApiKey() {
   const apiKey = await StorageManager.getApiKey();
   hasApiKey = !!apiKey;
-  
+
   if (hasApiKey) {
     apiKeySection.style.display = 'none';
   } else {
@@ -89,17 +89,17 @@ async function checkApiKey() {
  */
 async function handleSaveApiKey() {
   const apiKey = apiKeyInput.value.trim();
-  
+
   if (!apiKey) {
     showError('Please enter an API key');
     return;
   }
-  
+
   if (!apiKey.startsWith('AIza')) {
     showError('Invalid API key format. Gemini API keys start with "AIza"');
     return;
   }
-  
+
   try {
     await StorageManager.saveApiKey(apiKey);
     hasApiKey = true;
@@ -118,7 +118,7 @@ async function handleSaveApiKey() {
  */
 function handleSettings() {
   const action = confirm('Do you want to update your API key?\n\nClick OK to update, Cancel to remove it.');
-  
+
   if (action) {
     apiKeySection.style.display = 'block';
   } else {
@@ -132,7 +132,7 @@ function handleSettings() {
 async function handleRemoveApiKey() {
   const confirm = window.confirm('Are you sure you want to remove your API key?');
   if (!confirm) return;
-  
+
   try {
     await StorageManager.removeApiKey();
     hasApiKey = false;
@@ -182,10 +182,10 @@ async function loadSessions() {
   try {
     const response = await sendMessage(MessageTypes.GET_ALL_SESSIONS);
     const sessions = response.data || [];
-    
+
     // Clear existing options except first
     sessionSelect.innerHTML = '<option value="">Select a session...</option>';
-    
+
     // Add sessions
     sessions.forEach(session => {
       const option = document.createElement('option');
@@ -207,7 +207,7 @@ async function loadActiveSession() {
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
       windowId: currentWindowId
     });
-    
+
     if (response.data) {
       currentSession = response.data;
       sessionSelect.value = currentSession.id;
@@ -223,25 +223,25 @@ async function loadActiveSession() {
  */
 async function handleSessionChange() {
   const sessionId = sessionSelect.value;
-  
+
   if (!sessionId) {
     currentSession = null;
     updateUI();
     return;
   }
-  
+
   try {
     // Set as active session
     await sendMessage(MessageTypes.SET_ACTIVE_SESSION, {
       windowId: currentWindowId,
       sessionId: sessionId
     });
-    
+
     // Load session data
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
       windowId: currentWindowId
     });
-    
+
     currentSession = response.data;
     updateUI();
   } catch (error) {
@@ -256,14 +256,14 @@ async function handleSessionChange() {
 async function handleNewSession() {
   const name = prompt('Enter session name:');
   if (!name) return;
-  
+
   try {
     const response = await sendMessage(MessageTypes.CREATE_SESSION, {
       windowId: currentWindowId,
       name: name,
       taskDescription: ''
     });
-    
+
     currentSession = response.data;
     await loadSessions();
     sessionSelect.value = currentSession.id;
@@ -279,7 +279,7 @@ async function handleNewSession() {
  */
 async function handleTaskInput() {
   if (!currentSession) return;
-  
+
   try {
     await sendMessage(MessageTypes.UPDATE_SESSION, {
       sessionId: currentSession.id,
@@ -287,7 +287,7 @@ async function handleTaskInput() {
         taskDescription: taskInput.value
       }
     });
-    
+
     currentSession.taskDescription = taskInput.value;
     updateOptimizeButton();
   } catch (error) {
@@ -303,18 +303,18 @@ async function handleFileUpload() {
     showError('Please select or create a session first');
     return;
   }
-  
+
   const files = Array.from(fileInput.files);
   if (files.length === 0) return;
-  
+
   for (const file of files) {
     try {
       // Validate file
       validateFile(file);
-      
+
       // Read file content
       const content = await readFileAsText(file);
-      
+
       // Add to session
       await sendMessage(MessageTypes.ADD_CONTEXT_ITEM, {
         sessionId: currentSession.id,
@@ -332,10 +332,10 @@ async function handleFileUpload() {
       showError(`Failed to upload ${file.name}: ${error.message}`);
     }
   }
-  
+
   // Clear file input
   fileInput.value = '';
-  
+
   // Reload session
   await reloadSession();
 }
@@ -348,11 +348,11 @@ async function handleScreenshot() {
     showError('Please select or create a session first');
     return;
   }
-  
+
   try {
     const response = await sendMessage(MessageTypes.CAPTURE_SCREENSHOT);
     const { content, metadata } = response.data;
-    
+
     await sendMessage(MessageTypes.ADD_CONTEXT_ITEM, {
       sessionId: currentSession.id,
       contextItem: {
@@ -361,7 +361,7 @@ async function handleScreenshot() {
         metadata: metadata
       }
     });
-    
+
     await reloadSession();
   } catch (error) {
     console.error('Failed to capture screenshot:', error);
@@ -377,11 +377,11 @@ async function handleExtractTab() {
     showError('Please select or create a session first');
     return;
   }
-  
+
   try {
     const response = await sendMessage(MessageTypes.EXTRACT_TAB_CONTENT);
     const { content, metadata } = response.data;
-    
+
     await sendMessage(MessageTypes.ADD_CONTEXT_ITEM, {
       sessionId: currentSession.id,
       contextItem: {
@@ -390,7 +390,7 @@ async function handleExtractTab() {
         metadata: metadata
       }
     });
-    
+
     await reloadSession();
   } catch (error) {
     console.error('Failed to extract tab content:', error);
@@ -403,13 +403,13 @@ async function handleExtractTab() {
  */
 async function handleOptimize() {
   if (!currentSession) return;
-  
+
   try {
     optimizeBtn.disabled = true;
     resultSection.style.display = 'none';
     statusSection.style.display = 'block';
     statusText.textContent = 'Starting optimization...';
-    
+
     await sendMessage(MessageTypes.START_OPTIMIZATION, {
       sessionId: currentSession.id
     });
@@ -436,7 +436,7 @@ function handleOpenPage() {
 async function handleCopy() {
   const text = resultContent.textContent;
   const success = await copyToClipboard(text);
-  
+
   if (success) {
     copyBtn.textContent = '✓ Copied!';
     setTimeout(() => {
@@ -452,13 +452,13 @@ async function handleCopy() {
  */
 async function handleRemoveItem(itemId) {
   if (!currentSession) return;
-  
+
   try {
     await sendMessage(MessageTypes.REMOVE_CONTEXT_ITEM, {
       sessionId: currentSession.id,
       itemId: itemId
     });
-    
+
     await reloadSession();
   } catch (error) {
     console.error('Failed to remove item:', error);
@@ -471,12 +471,12 @@ async function handleRemoveItem(itemId) {
  */
 async function reloadSession() {
   if (!currentSession) return;
-  
+
   try {
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
       windowId: currentWindowId
     });
-    
+
     currentSession = response.data;
     updateUI();
   } catch (error) {
@@ -499,19 +499,19 @@ function updateUI() {
     extractTabBtn.disabled = true;
     return;
   }
-  
+
   // Enable inputs
   taskInput.disabled = false;
   uploadFileBtn.disabled = false;
   screenshotBtn.disabled = false;
   extractTabBtn.disabled = false;
-  
+
   // Update task input
   taskInput.value = currentSession.taskDescription || '';
-  
+
   // Update context items
   updateContextItems();
-  
+
   // Update optimize button
   updateOptimizeButton();
 }
@@ -522,27 +522,27 @@ function updateUI() {
 function updateContextItems() {
   const items = currentSession.contextItems || [];
   contextCount.textContent = items.length;
-  
+
   if (items.length === 0) {
     contextItemsList.innerHTML = '<p class="empty-state">No context items yet</p>';
     return;
   }
-  
+
   contextItemsList.innerHTML = '';
-  
+
   items.forEach(item => {
     const div = document.createElement('div');
     div.className = 'context-item';
-    
+
     const info = document.createElement('div');
     info.className = 'context-item-info';
-    info.textContent = `${getContextItemIcon(item.type)} ${item.metadata?.fileName || item.metadata?.url || 'Content'}`;
-    
+    info.textContent = `${getContextItemIcon(item.type, item.metadata?.fileName)} ${item.metadata?.fileName || item.metadata?.url || 'Content'}`;
+
     const removeBtn = document.createElement('button');
     removeBtn.className = 'context-item-remove';
     removeBtn.textContent = '×';
     removeBtn.onclick = () => handleRemoveItem(item.id);
-    
+
     div.appendChild(info);
     div.appendChild(removeBtn);
     contextItemsList.appendChild(div);
@@ -555,7 +555,7 @@ function updateContextItems() {
 function updateOptimizeButton() {
   const hasTask = currentSession?.taskDescription?.trim().length > 0;
   const hasContext = currentSession?.contextItems?.length > 0;
-  
+
   optimizeBtn.disabled = !hasTask || !hasContext;
 }
 
@@ -567,7 +567,7 @@ function setupMessageListener() {
     if (message.type === MessageTypes.OPTIMIZATION_STATUS) {
       statusText.textContent = message.payload.status;
     }
-    
+
     if (message.type === MessageTypes.OPTIMIZATION_COMPLETE) {
       const result = message.payload.result;
       statusSection.style.display = 'none';
@@ -575,7 +575,7 @@ function setupMessageListener() {
       resultContent.textContent = result.optimizedPrompt;
       optimizeBtn.disabled = false;
     }
-    
+
     if (message.type === MessageTypes.OPTIMIZATION_ERROR) {
       statusSection.style.display = 'none';
       showError('Optimization failed: ' + message.payload.error);
@@ -594,7 +594,7 @@ function sendMessage(type, payload = {}) {
         reject(new Error(chrome.runtime.lastError.message));
         return;
       }
-      
+
       if (response && response.success) {
         resolve(response);
       } else {

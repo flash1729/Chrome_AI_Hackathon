@@ -64,12 +64,23 @@ export function truncateText(text, maxLength = 50) {
 /**
  * Get icon emoji for context item type
  */
-export function getContextItemIcon(type) {
+export function getContextItemIcon(type, fileName = '') {
   const icons = {
     'file': '📁',
     'screenshot': '📸',
     'tab-content': '📄'
   };
+  
+  // Special icons for specific file types
+  if (type === 'file' && fileName) {
+    if (fileName.endsWith('.dart')) return '🎯';
+    if (fileName.endsWith('.js') || fileName.endsWith('.ts')) return '📜';
+    if (fileName.endsWith('.py')) return '🐍';
+    if (fileName.endsWith('.java')) return '☕';
+    if (fileName.endsWith('.json')) return '📋';
+    if (fileName.endsWith('.md')) return '📝';
+  }
+  
   return icons[type] || '📄';
 }
 
@@ -143,14 +154,15 @@ export function validateFile(file, maxSizeMB = 10) {
     'text/',
     'application/json',
     'application/javascript',
-    'application/xml'
+    'application/xml',
+    'application/dart'
   ];
   
   const isAllowed = allowedTypes.some(type => file.type.startsWith(type)) ||
-                    file.name.match(/\.(txt|md|js|ts|jsx|tsx|json|xml|html|css|py|java|cpp|c|h|go|rs|rb|php|sql|sh|yaml|yml)$/i);
+                    file.name.match(/\.(txt|md|js|ts|jsx|tsx|json|xml|html|css|py|java|cpp|c|h|go|rs|rb|php|sql|sh|yaml|yml|dart)$/i);
   
   if (!isAllowed) {
-    throw new Error('File type not supported');
+    throw new Error('File type not supported. Supported types: .txt, .md, .js, .ts, .jsx, .tsx, .json, .xml, .html, .css, .py, .java, .cpp, .c, .h, .go, .rs, .rb, .php, .sql, .sh, .yaml, .yml, .dart');
   }
   
   return true;

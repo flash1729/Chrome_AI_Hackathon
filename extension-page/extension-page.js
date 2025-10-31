@@ -181,7 +181,7 @@ function renderContextItems() {
     
     const icon = document.createElement('div');
     icon.className = 'context-item-type';
-    icon.textContent = getContextItemIcon(item.type);
+    icon.textContent = getContextItemIcon(item.type, item.metadata?.fileName);
     
     const name = document.createElement('div');
     name.className = 'context-item-name';
