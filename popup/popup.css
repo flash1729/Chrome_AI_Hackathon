@@ -91,9 +91,16 @@ label {
   transition: all 0.2s;
 }
 
-.btn-context:hover {
+.btn-context:hover:not(:disabled) {
   background: #f8f9fa;
   border-color: #4285f4;
+}
+
+.btn-context:disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+  border-color: #ddd;
 }
 
 .context-items-list {

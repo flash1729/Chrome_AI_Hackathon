@@ -1,4 +1,4 @@
-import { MessageTypes, GEMINI_API_KEY } from '../utils/constants.js';
+import { MessageTypes, GEMINI_API_KEY, ContextItemTypes } from '../utils/constants.js';
 import { SessionManager } from '../utils/session-manager.js';
 import { GeminiAPIHandler } from '../utils/gemini-api.js';
 import { StorageManager } from '../utils/storage.js';
@@ -157,11 +157,33 @@ async function handleExtractTabContent(payload) {
       throw new Error('Failed to extract content');
     }
 
+    const extractedContent = results[0].result.content;
+    const extractedTitle = results[0].result.title;
+
+    // Generate AI summary for better display
+    let displayName = null;
+    try {
+      // Inject AI summarization script into the tab
+      const aiResults = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: generateContentSummaryInTab,
+        args: [extractedContent, extractedTitle, tab.url]
+      });
+
+      if (aiResults && aiResults[0] && aiResults[0].result) {
+        displayName = aiResults[0].result;
+      }
+    } catch (aiError) {
+      console.warn('AI summarization failed:', aiError);
+      // Will use fallback in the UI
+    }
+
     return {
-      content: results[0].result.content,
+      content: extractedContent,
       metadata: {
         url: tab.url,
-        title: results[0].result.title,
+        title: extractedTitle,
+        displayName: displayName,
         timestamp: Date.now()
       }
     };
@@ -211,6 +233,61 @@ function extractPageContent() {
     content: content,
     title: document.title
   };
+}
+
+/**
+ * Function to be injected into page for AI content summarization
+ */
+async function generateContentSummaryInTab(content, title, url) {
+  // Check if Chrome AI is available
+  if (!('ai' in window) || !('languageModel' in window.ai)) {
+    return null;
+  }
+
+  try {
+    const session = await window.ai.languageModel.create({
+      systemPrompt: `You are a content summarizer. Create very short, descriptive summaries of web page content.
+
+Rules:
+- Use exactly 3-5 words
+- Be descriptive and specific
+- Focus on the main topic or purpose
+- Use title case (capitalize first letters)
+- No punctuation at the end
+- Examples: "React Documentation Guide", "News Article Politics", "Recipe Chocolate Cake", "GitHub Repository Code"
+
+Respond with only the summary, nothing else.`
+    });
+
+    // Prepare content for summarization (limit length for better performance)
+    const maxLength = 2000;
+    const truncatedContent = content.length > maxLength 
+      ? content.substring(0, maxLength) + '...' 
+      : content;
+
+    // Create a prompt with context
+    const prompt = `Title: ${title || 'Unknown'}
+URL: ${url || 'Unknown'}
+Content: ${truncatedContent}
+
+Summarize this web page content in 3-5 words:`;
+
+    const summary = await session.prompt(prompt);
+    
+    // Clean up the response
+    const cleanSummary = summary.trim().replace(/[.!?]+$/, '');
+    
+    // Validate summary length (should be 3-5 words)
+    const wordCount = cleanSummary.split(/\s+/).length;
+    if (wordCount >= 3 && wordCount <= 5 && cleanSummary.length > 0) {
+      return cleanSummary;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('AI summarization failed:', error);
+    return null;
+  }
 }
 
 /**
@@ -267,11 +344,76 @@ async function handleStartOptimization(payload) {
 }
 
 /**
+ * Generate display name for context item with AI enhancement and fallbacks
+ */
+function getContextItemDisplayName(item) {
+  const { type, metadata } = item;
+
+  // For files, always use filename
+  if (type === ContextItemTypes.FILE && metadata?.fileName) {
+    return metadata.fileName;
+  }
+
+  // For tab content, use AI-generated displayName first
+  if (type === ContextItemTypes.TAB_CONTENT) {
+    if (metadata?.displayName) {
+      return metadata.displayName;
+    }
+
+    // Fallback to title-based summary
+    if (metadata?.title) {
+      const words = metadata.title
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2)
+        .slice(0, 4);
+      
+      if (words.length >= 2) {
+        return words.join(' ');
+      }
+    }
+
+    // Fallback to domain name
+    if (metadata?.url) {
+      try {
+        const urlObj = new URL(metadata.url);
+        const domain = urlObj.hostname.replace('www.', '');
+        return `${domain} Content`;
+      } catch {
+        return 'Web Content';
+      }
+    }
+
+    return 'Web Content';
+  }
+
+  // For screenshots, use URL or title
+  if (type === ContextItemTypes.SCREENSHOT) {
+    if (metadata?.title) {
+      return `Screenshot: ${metadata.title.substring(0, 20)}`;
+    }
+    if (metadata?.url) {
+      try {
+        const urlObj = new URL(metadata.url);
+        return `Screenshot: ${urlObj.hostname.replace('www.', '')}`;
+      } catch {
+        return 'Screenshot';
+      }
+    }
+    return 'Screenshot';
+  }
+
+  // Default fallback
+  return metadata?.fileName || metadata?.title || metadata?.url || 'Content';
+}
+
+/**
  * Check context sufficiency using Gemini function calling
  */
 async function checkContextSufficiency(gemini, session) {
   const contextSummary = session.contextItems.map(item => {
-    return `[${item.type}] ${item.metadata?.fileName || item.metadata?.url || 'Content'}: ${item.content.substring(0, 200)
+    const displayName = getContextItemDisplayName(item);
+    return `[${item.type}] ${displayName}: ${item.content.substring(0, 200)
       }...`;
   }).join('\n');
 
@@ -348,7 +490,8 @@ Provide a comprehensive summary of findings.
  */
 async function generateOptimizedPrompt(gemini, session, additionalContext) {
   const contextSummary = session.contextItems.map(item => {
-    return `[${item.type}] ${item.metadata?.fileName || item.metadata?.url || 'Content'}:\n${item.content}\n`;
+    const displayName = getContextItemDisplayName(item);
+    return `[${item.type}] ${displayName}:\n${item.content}\n`;
   }).join('\n---\n');
 
   const prompt = `
