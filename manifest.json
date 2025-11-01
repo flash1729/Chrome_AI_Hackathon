@@ -7,8 +7,7 @@
     "storage",
     "tabs",
     "activeTab",
-    "scripting",
-    "aiLanguageModelOriginTrial"
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>",

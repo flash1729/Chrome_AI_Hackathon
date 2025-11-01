@@ -6,7 +6,7 @@ export const GEMINI_CONFIG = {
   model: "gemini-2.5-flash", // Use flash initially, it's faster and cheaper for testing
   baseUrl: "https://generativelanguage.googleapis.com/v1beta",
   temperature: 0.7,
-  maxOutputTokens: 4096,
+  maxOutputTokens: 8196,
   topK: 64,
   topP: 0.95,
 };
