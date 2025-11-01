@@ -2,7 +2,7 @@ import { MessageTypes, ContextItemTypes } from '../utils/constants.js';
 import { getContextItemIcon, copyToClipboard, readFileAsText, validateFile } from '../utils/helpers.js';
 
 // DOM elements
-let sessionSelect, newSessionBtn, taskInput, uploadFileBtn, fileInput;
+let sessionSelect, newSessionBtn, taskInput, proofreadBtn, uploadFileBtn, fileInput;
 let screenshotBtn, extractTabBtn, contextItemsList, contextCount;
 let optimizeBtn, openPageBtn, statusSection, statusText, resultSection, resultContent, copyBtn;
 
@@ -27,6 +27,7 @@ function initializeElements() {
   sessionSelect = document.getElementById('session-select');
   newSessionBtn = document.getElementById('new-session-btn');
   taskInput = document.getElementById('task-input');
+  proofreadBtn = document.getElementById('proofread-btn');
   uploadFileBtn = document.getElementById('upload-file-btn');
   fileInput = document.getElementById('file-input');
   screenshotBtn = document.getElementById('screenshot-btn');
@@ -49,6 +50,7 @@ function attachEventListeners() {
   sessionSelect.addEventListener('change', handleSessionChange);
   newSessionBtn.addEventListener('click', handleNewSession);
   taskInput.addEventListener('input', handleTaskInput);
+  proofreadBtn.addEventListener('click', handleProofread);
   uploadFileBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', handleFileUpload);
   screenshotBtn.addEventListener('click', handleScreenshot);
@@ -185,6 +187,180 @@ async function handleTaskInput() {
     updateOptimizeButton();
   } catch (error) {
     console.error('Failed to update task:', error);
+  }
+}
+
+
+
+
+
+
+
+/**
+ * Handle proofreading task text using Chrome Proofreader API directly in popup
+ */
+async function handleProofread() {
+  const originalText = taskInput.value;
+  
+  if (!originalText.trim()) {
+    showError('Please enter some text to proofread');
+    return;
+  }
+
+  // Show loading state
+  proofreadBtn.disabled = true;
+  proofreadBtn.classList.add('processing');
+  proofreadBtn.textContent = '🔄 Proofreading...';
+
+  try {
+    // Use Chrome Proofreader API directly in popup context
+    const result = await proofreadWithChromeAPI(originalText);
+    
+    if (result.success) {
+      const correctedText = result.correctedText;
+      
+      // Check if text actually changed
+      if (correctedText !== originalText) {
+        // Update the input field
+        taskInput.value = correctedText;
+        
+        // Update session if we have one
+        if (currentSession) {
+          await sendMessage(MessageTypes.UPDATE_SESSION, {
+            sessionId: currentSession.id,
+            updates: { taskDescription: correctedText }
+          });
+          currentSession.taskDescription = correctedText;
+          updateOptimizeButton();
+        }
+        
+        // Show success
+        proofreadBtn.textContent = '✅ Corrected!';
+      } else {
+        // No changes needed
+        proofreadBtn.textContent = '✅ Looks good!';
+      }
+    } else {
+      // Proofreader API failed, show helpful error message
+      console.error('Proofreading failed:', result.error);
+      
+      // Show more user-friendly error message
+      if (result.error.includes('Chrome AI not available')) {
+        showError('Chrome AI not available. Please use Chrome Canary/Dev with AI flags enabled.');
+      } else if (result.error.includes('proofreader-api-for-gemini-nano')) {
+        showError('Enable "proofreader-api-for-gemini-nano" flag in chrome://flags/');
+      } else if (result.error.includes('downloading')) {
+        showError('AI model is downloading. Please wait and try again later.');
+      } else {
+        showError('Proofreading unavailable: ' + result.error);
+      }
+      
+      proofreadBtn.textContent = '❌ Setup Required';
+    }
+    
+  } catch (error) {
+    console.error('Proofreading request failed:', error);
+    showError('Proofreading failed: ' + error.message);
+    proofreadBtn.textContent = '❌ Failed';
+  }
+
+  // Reset button after 2 seconds
+  setTimeout(() => {
+    proofreadBtn.textContent = '✏️ Proofread';
+    proofreadBtn.disabled = false;
+    proofreadBtn.classList.remove('processing');
+  }, 2000);
+}
+
+/**
+ * Proofread text using Chrome Proofreader API directly in popup context
+ */
+async function proofreadWithChromeAPI(text) {
+  try {
+    // Check if Chrome AI is available
+    if (!('ai' in window)) {
+      return {
+        correctedText: text,
+        success: false,
+        error: 'Chrome AI not available. Please use Chrome Canary/Dev and enable AI flags in chrome://flags/'
+      };
+    }
+
+    if (!('proofreader' in window.ai)) {
+      return {
+        correctedText: text,
+        success: false,
+        error: 'Proofreader API not available. Enable "proofreader-api-for-gemini-nano" flag in chrome://flags/'
+      };
+    }
+
+    // Check proofreader capabilities
+    let capabilities;
+    try {
+      capabilities = await window.ai.proofreader.capabilities();
+      
+      if (capabilities.available === 'no') {
+        return {
+          correctedText: text,
+          success: false,
+          error: 'Proofreader API not available on this device. Try enabling "bypass-perf-requirement" flag.'
+        };
+      }
+      
+      if (capabilities.available === 'after-download') {
+        return {
+          correctedText: text,
+          success: false,
+          error: 'Proofreader model is downloading. Check chrome://components/ for "Optimization Guide On Device Model".'
+        };
+      }
+    } catch (capError) {
+      return {
+        correctedText: text,
+        success: false,
+        error: 'Failed to check Proofreader capabilities. Make sure Chrome AI flags are enabled.'
+      };
+    }
+
+    // Create proofreader session
+    let proofreader;
+    try {
+      proofreader = await window.ai.proofreader.create();
+    } catch (createError) {
+      return {
+        correctedText: text,
+        success: false,
+        error: 'Failed to create Proofreader session. The model may still be downloading.'
+      };
+    }
+
+    // Proofread the text
+    let correctedText;
+    try {
+      correctedText = await proofreader.proofread(text);
+    } catch (proofreadError) {
+      return {
+        correctedText: text,
+        success: false,
+        error: 'Proofreading failed. The text may be too long or contain unsupported content.'
+      };
+    }
+
+    // Clean up and return result
+    const cleanedText = correctedText ? correctedText.trim() : text;
+    
+    return {
+      correctedText: cleanedText,
+      success: true,
+      error: null
+    };
+
+  } catch (error) {
+    return {
+      correctedText: text,
+      success: false,
+      error: 'Unexpected error: ' + error.message
+    };
   }
 }
 

@@ -1,5 +1,6 @@
 // Gemini API Configuration
-// API key is hardcoded for this version
+// This file can be auto-generated from .env file by running: npm run build
+// For development: Replace YOUR_GEMINI_API_KEY_HERE with your actual API key
 export const GEMINI_API_KEY = "AIzaSyD5GIkfzZSazRkapQuKxE8dHGYUu3aN31E";
 
 export const GEMINI_CONFIG = {
@@ -33,6 +34,8 @@ export const MessageTypes = {
   REMOVE_CONTEXT_ITEM: "remove_context_item",
   CAPTURE_SCREENSHOT: "capture_screenshot",
   EXTRACT_TAB_CONTENT: "extract_tab_content",
+
+
 
   // Optimization
   START_OPTIMIZATION: "start_optimization",

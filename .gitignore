@@ -1,5 +1,6 @@
 # API Keys and Secrets
 # IMPORTANT: Never commit API keys or secrets to version control
+# utils/constants.js is now tracked but generated from .env (see build-config.js)
 utils/constants.js
 
 # macOS
