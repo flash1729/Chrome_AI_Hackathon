@@ -1,7 +1,6 @@
 import { MessageTypes, GEMINI_API_KEY, ContextItemTypes } from '../utils/constants.js';
 import { SessionManager } from '../utils/session-manager.js';
 import { GeminiAPIHandler } from '../utils/gemini-api.js';
-import { StorageManager } from '../utils/storage.js';
 
 console.log('Background service worker loaded');
 
@@ -236,7 +235,7 @@ function extractPageContent() {
 }
 
 /**
- * Function to be injected into page for AI content summarization
+ * Function to be injected into page for AI content summarization using Chrome Prompt API
  */
 async function generateContentSummaryInTab(content, title, url) {
   // Check if Chrome AI is available
@@ -261,8 +260,8 @@ Respond with only the summary, nothing else.`
 
     // Prepare content for summarization (limit length for better performance)
     const maxLength = 2000;
-    const truncatedContent = content.length > maxLength
-      ? content.substring(0, maxLength) + '...'
+    const truncatedContent = content.length > maxLength 
+      ? content.substring(0, maxLength) + '...' 
       : content;
 
     // Create a prompt with context
@@ -273,16 +272,16 @@ Content: ${truncatedContent}
 Summarize this web page content in 3-5 words:`;
 
     const summary = await session.prompt(prompt);
-
+    
     // Clean up the response
     const cleanSummary = summary.trim().replace(/[.!?]+$/, '');
-
+    
     // Validate summary length (should be 3-5 words)
     const wordCount = cleanSummary.split(/\s+/).length;
     if (wordCount >= 3 && wordCount <= 5 && cleanSummary.length > 0) {
       return cleanSummary;
     }
-
+    
     return null;
   } catch (error) {
     console.error('AI summarization failed:', error);
@@ -306,7 +305,6 @@ async function handleStartOptimization(payload) {
     // Send status update
     broadcastOptimizationStatus(sessionId, 'Checking context sufficiency...');
 
-    // Use hardcoded API key
     // Initialize Gemini API
     const gemini = new GeminiAPIHandler(GEMINI_API_KEY);
 
@@ -324,10 +322,6 @@ async function handleStartOptimization(payload) {
     // Stage 3: Final Optimization
     broadcastOptimizationStatus(sessionId, 'Generating optimized prompt...');
     const optimizedPrompt = await generateOptimizedPrompt(gemini, session, additionalContext);
-
-    // Log complexity level for debugging
-    const complexity = analyzePromptComplexity(session.taskDescription, session.contextItems, additionalContext);
-    console.log(`Prompt optimization completed with complexity level: ${complexity}`);
 
     // Save result
     const result = await SessionManager.addOptimizationResult(sessionId, {
@@ -371,7 +365,7 @@ function getContextItemDisplayName(item) {
         .split(/\s+/)
         .filter(word => word.length > 2)
         .slice(0, 4);
-
+      
       if (words.length >= 2) {
         return words.join(' ');
       }
@@ -417,8 +411,7 @@ function getContextItemDisplayName(item) {
 async function checkContextSufficiency(gemini, session) {
   const contextSummary = session.contextItems.map(item => {
     const displayName = getContextItemDisplayName(item);
-    return `[${item.type}] ${displayName}: ${item.content.substring(0, 200)
-      }...`;
+    return `[${item.type}] ${displayName}: ${item.content.substring(0, 200)}...`;
   }).join('\n');
 
   const prompt = `
@@ -490,40 +483,7 @@ Provide a comprehensive summary of findings.
 }
 
 /**
- * Analyze prompt complexity to determine optimization approach
- */
-function analyzePromptComplexity(taskDescription, contextItems, additionalContext) {
-  const factors = {
-    taskLength: taskDescription.length,
-    contextCount: contextItems.length,
-    hasFiles: contextItems.some(item => item.type === 'file'),
-    hasWebResearch: additionalContext && additionalContext.length > 0,
-    totalContextLength: contextItems.reduce((sum, item) => sum + item.content.length, 0) + (additionalContext?.length || 0)
-  };
-
-  // Simple prompt criteria
-  const isSimple = (
-    factors.taskLength < 100 &&
-    factors.contextCount === 0 &&
-    !factors.hasFiles &&
-    !factors.hasWebResearch &&
-    factors.totalContextLength === 0
-  );
-
-  // Medium complexity criteria
-  const isMedium = (
-    factors.taskLength < 300 &&
-    factors.contextCount <= 2 &&
-    factors.totalContextLength < 5000
-  );
-
-  if (isSimple) return 'simple';
-  if (isMedium) return 'medium';
-  return 'complex';
-}
-
-/**
- * Generate optimized prompt using adaptive complexity-based approach
+ * Generate optimized prompt using ideal LLM prompt structure
  */
 async function generateOptimizedPrompt(gemini, session, additionalContext) {
   const contextSummary = session.contextItems.map(item => {
@@ -531,44 +491,7 @@ async function generateOptimizedPrompt(gemini, session, additionalContext) {
     return `[${item.type}] ${displayName}:\n${item.content}\n`;
   }).join('\n---\n');
 
-  const complexity = analyzePromptComplexity(session.taskDescription, session.contextItems, additionalContext);
-
-  let prompt, systemInstruction;
-
-  if (complexity === 'simple') {
-    // For simple prompts, minimal optimization
-    prompt = `
-Original User Task: ${session.taskDescription}
-
-This is a simple, straightforward question. Provide a clear, direct response without unnecessary complexity.
-`;
-
-    systemInstruction = `You are a helpful assistant. The user has asked a simple question that doesn't require complex prompt engineering. Simply rephrase their question clearly and concisely if needed, or return it as-is if it's already well-formed. Keep it natural and conversational.`;
-
-  } else if (complexity === 'medium') {
-    // For medium complexity, basic structure
-    prompt = `
-Original User Task: ${session.taskDescription}
-
-Available Context:
-${contextSummary}
-
-${additionalContext ? `Additional Research:\n${additionalContext}\n` : ''}
-
-Create a well-structured prompt that includes the task, relevant context, and clear instructions.
-`;
-
-    systemInstruction = `You are a prompt optimizer. Create a clear, structured prompt that includes:
-1. A brief role assignment if helpful
-2. Clear task instructions
-3. Relevant context in an organized way
-4. Expected output format if specific
-
-Keep it concise but complete. Don't over-engineer for medium complexity tasks.`;
-
-  } else {
-    // For complex prompts, full 5-component structure
-    prompt = `
+  const prompt = `
 Original User Task: ${session.taskDescription}
 
 Available Context:
@@ -579,29 +502,55 @@ ${additionalContext ? `Additional Research:\n${additionalContext}\n` : ''}
 Transform this into an ideal LLM prompt using the 5-component structure: Role/Persona, Task/Instruction, Context, Examples (if applicable), and Format/Output Constraints.
 `;
 
-    systemInstruction = `You are an expert prompt engineer. Your task is to transform a basic user request and a collection of context (files, web research) into a single, comprehensive, and highly effective prompt for a large language model.
+  const systemInstruction = `You are an expert prompt engineer specializing in creating highly effective, structured prompts for large language models. Your task is to transform basic user requests into comprehensive, well-structured prompts that maximize LLM performance.
 
-Your generated prompt must follow this 5-component structure:
+## Core Prompt Structure Requirements
 
-1.  **ROLE/PERSONA**: Assign a specific, expert role to the LLM (e.g., "You are a senior Flutter architect").
-2.  **TASK/INSTRUCTION**: State the core task clearly. Be unambiguous. Break down complex tasks into steps.
-3.  **CONTEXT**: Provide all necessary background information, clearly separated by XML-like tags.
-    * Use <RAW_USER_PROMPT> for the original user query.
-    * Use <FILE_CONTEXT file_name="..."> for file contents.
-    * Use <WEB_RESEARCH> for supplemental information.
-4.  **EXAMPLES** (Optional): If the task is novel or requires a specific output format, provide 1-2 concise input/output examples.
-5.  **FORMAT/OUTPUT CONSTRAINTS**: Define the exact expected output format (e.g., "Provide only the code snippet," "Respond in Markdown," "Your answer must be a JSON object").
+An ideal prompt must include these 5 components:
 
----
-## Key Directives
+### 1. ROLE/PERSONA 
+- Assign a specific, relevant role to the LLM (e.g., "You are a senior software architect", "You are an expert financial analyst")
+- The role should match the expertise needed for the task
+- Set the appropriate tone, style, and knowledge level
 
-* **GOAL**: The final prompt must be 100% complete, functional, and ready to be used.
-* **COMPLETENESS**: **Your response must be complete and NOT truncated.** Ensure all code blocks, instructions, and sections are fully generated.
-* **CONTEXT INTEGRITY**: You MUST include the context (files, web research) **in its entirety** inside the designated XML tags. Do NOT summarize or use excerpts unless the original context is excessively large (e.t., >20,000 tokens).
-* **CLARITY**: The prompt's instructions must be precise, actionable, and leave no room for ambiguity.
-* **NO HEADERS**: The final output prompt should be a single, seamless block of text. **Do not** use markdown headings (# ROLE, # TASK) to label the components. Integrate them naturally.
-`;
-  }
+### 2. TASK/INSTRUCTION 
+- State the core instruction clearly and unambiguously
+- Use action verbs and be direct
+- Make implicit requirements explicit
+- Break down complex tasks into clear steps if needed
+
+### 3. CONTEXT 
+- Provide all necessary background information using clear delimiters
+- Structure context with XML-like tags: <RAW_USER_PROMPT>, <FILE_DATA>, <WEB_RESEARCH_DATA>
+- Include the original user query verbatim in <RAW_USER_PROMPT> tags
+- **IMPORTANT**: For file data, include only the relevant sections/excerpts needed for the task, NOT complete file contents
+- Organize file contents with clear file names and relevant sections
+- Add web research data with source attribution when available
+- Ensure context is comprehensive but focused
+
+### 4. EXAMPLES (Few-Shot Prompting) 
+- Include 1-2 input-output examples when the task benefits from demonstration
+- Show the exact format and style expected
+- Use <EXAMPLES><EXAMPLE>Input:...Output:...</EXAMPLE></EXAMPLES> structure
+- Only include if examples would significantly improve output quality
+
+### 5. FORMAT/OUTPUT CONSTRAINTS 
+- Specify exact output format (Markdown, JSON, word count, etc.)
+- Define structure requirements (headings, sections, bullet points)
+- Set length constraints and style guidelines
+- Include any specific formatting requirements
+
+## Prompt Generation Guidelines:
+
+1. **Analyze the Task**: Determine what type of expertise and output format would be most effective
+2. **Structure Context**: Organize all provided information using clear delimiters and logical grouping
+3. **Be Specific**: Replace vague instructions with precise, actionable directions
+4. **Include Constraints**: Always specify output format and any limitations
+5. **Preserve User Intent**: Keep the original user query intact within the context section
+6. **Optimize for Clarity**: Use clear headings, proper formatting, and logical flow
+
+## Output Format:
+Generate the optimized prompt as a complete, ready-to-use prompt that follows the 5-component structure. DO NOT include structural headings like "# ROLE", "# TASK", etc. in the final output. Instead, seamlessly integrate all components into a natural, flowing prompt that contains the role assignment, clear task instructions, well-organized context, examples (if needed), and output format specifications without explicit section markers.`;
 
   const result = await gemini.generateContent(prompt, { systemInstruction });
 

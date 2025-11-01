@@ -3,7 +3,7 @@ import { formatDate, getContextItemIcon, copyToClipboard, readFileAsText, valida
 
 // DOM elements
 let sessionsList, newSessionBtn, noSessionView, sessionDetailView;
-let sessionNameInput, sessionCreated, sessionItems, taskDescription;
+let sessionNameInput, sessionCreated, sessionItems, taskDescription, proofreadBtn;
 let uploadFileBtn, screenshotBtn, extractTabBtn, fileInput, contextItemsGrid;
 let optimizeBtn, statusSection, statusText, resultSection, resultContent, copyBtn;
 let historyList;
@@ -32,6 +32,7 @@ function initializeElements() {
   sessionCreated = document.getElementById('session-created');
   sessionItems = document.getElementById('session-items');
   taskDescription = document.getElementById('task-description');
+  proofreadBtn = document.getElementById('proofread-btn');
   uploadFileBtn = document.getElementById('upload-file-btn');
   screenshotBtn = document.getElementById('screenshot-btn');
   extractTabBtn = document.getElementById('extract-tab-btn');
@@ -53,6 +54,7 @@ function attachEventListeners() {
   newSessionBtn.addEventListener('click', handleNewSession);
   sessionNameInput.addEventListener('blur', handleSessionNameUpdate);
   taskDescription.addEventListener('blur', handleTaskUpdate);
+  proofreadBtn.addEventListener('click', handleProofread);
   uploadFileBtn.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', handleFileUpload);
   screenshotBtn.addEventListener('click', handleScreenshot);
@@ -390,6 +392,84 @@ async function handleTaskUpdate() {
     console.error('Failed to update task:', error);
     showError('Failed to update task');
   }
+}
+
+
+
+/**
+ * Handle proofreading task text using Chrome Proofreader API
+ */
+async function handleProofread() {
+  const originalText = taskDescription.value;
+  
+  if (!originalText.trim()) {
+    showError('Please enter some text to proofread');
+    return;
+  }
+
+  // Show loading state
+  proofreadBtn.disabled = true;
+  proofreadBtn.classList.add('processing');
+  proofreadBtn.textContent = '🔄 Proofreading...';
+
+  try {
+    // Send text to background script for proofreading
+    const response = await sendMessage(MessageTypes.PROOFREAD_TEXT, { text: originalText });
+    
+    if (response.data.success) {
+      const correctedText = response.data.correctedText;
+      
+      // Check if text actually changed
+      if (correctedText !== originalText) {
+        // Update the input field
+        taskDescription.value = correctedText;
+        
+        // Update session if we have one
+        if (currentSession) {
+          await sendMessage(MessageTypes.UPDATE_SESSION, {
+            sessionId: currentSession.id,
+            updates: { taskDescription: correctedText }
+          });
+          currentSession.taskDescription = correctedText;
+          updateOptimizeButton();
+        }
+        
+        // Show success
+        proofreadBtn.textContent = '✅ Corrected!';
+      } else {
+        // No changes needed
+        proofreadBtn.textContent = '✅ Looks good!';
+      }
+    } else {
+      // Proofreader API failed, show helpful error message
+      console.error('Proofreading failed:', response.data.error);
+      
+      // Show more user-friendly error message
+      if (response.data.error.includes('window.ai not found')) {
+        showError('Chrome AI not available. Please use Chrome Canary/Dev with AI flags enabled.');
+      } else if (response.data.error.includes('proofreader-api-for-gemini-nano')) {
+        showError('Enable "proofreader-api-for-gemini-nano" flag in chrome://flags/');
+      } else if (response.data.error.includes('downloading')) {
+        showError('AI model is downloading. Please wait and try again later.');
+      } else {
+        showError('Proofreading unavailable: ' + response.data.error);
+      }
+      
+      proofreadBtn.textContent = '❌ Setup Required';
+    }
+    
+  } catch (error) {
+    console.error('Proofreading request failed:', error);
+    showError('Proofreading failed: ' + error.message);
+    proofreadBtn.textContent = '❌ Failed';
+  }
+
+  // Reset button after 2 seconds
+  setTimeout(() => {
+    proofreadBtn.textContent = '✏️ Proofread';
+    proofreadBtn.disabled = false;
+    proofreadBtn.classList.remove('processing');
+  }, 2000);
 }
 
 /**

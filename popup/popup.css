@@ -63,6 +63,51 @@ label {
   letter-spacing: 0.02em;
 }
 
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.btn-proofread {
+  padding: 4px 8px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #9ca3af;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.btn-proofread:hover:not(:disabled) {
+  background: #2a2a2a;
+  border-color: #a78bfa;
+  color: #a78bfa;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+}
+
+.btn-proofread:disabled {
+  background: #0f0f0f;
+  color: #555;
+  cursor: not-allowed;
+  border-color: #222;
+}
+
+.btn-proofread.processing {
+  background: #2a2a2a;
+  border-color: #a78bfa;
+  color: #a78bfa;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+
+
 .session-controls {
   display: flex;
   gap: 8px;

@@ -412,6 +412,51 @@ h3 {
   border-color: #333;
 }
 
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.btn-proofread {
+  padding: 6px 12px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.btn-proofread:hover:not(:disabled) {
+  background: #2a2a2a;
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.2);
+}
+
+.btn-proofread:disabled {
+  background: #0f0f0f;
+  color: #555;
+  cursor: not-allowed;
+  border-color: #222;
+}
+
+.btn-proofread.processing {
+  background: #2a2a2a;
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+
+
 .btn-primary-large {
   width: 100%;
   padding: 18px;
