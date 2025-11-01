@@ -271,6 +271,10 @@ async function handleExtractTab() {
     return;
   }
 
+  // Show loading state
+  extractTabBtn.disabled = true;
+  extractTabBtn.textContent = '🔄 Analyzing...';
+
   try {
     const response = await sendMessage(MessageTypes.EXTRACT_TAB_CONTENT);
     const { content, metadata } = response.data;
@@ -288,6 +292,10 @@ async function handleExtractTab() {
   } catch (error) {
     console.error('Failed to extract tab content:', error);
     showError('Failed to extract tab content');
+  } finally {
+    // Reset button state
+    extractTabBtn.disabled = false;
+    extractTabBtn.textContent = '📄 Extract Tab Content';
   }
 }
 
@@ -410,6 +418,70 @@ function updateUI() {
 }
 
 /**
+ * Generate display name for context item with AI enhancement and fallbacks
+ */
+function getContextItemDisplayName(item) {
+  const { type, metadata } = item;
+
+  // For files, always use filename
+  if (type === ContextItemTypes.FILE && metadata?.fileName) {
+    return metadata.fileName;
+  }
+
+  // For tab content, use AI-generated displayName first
+  if (type === ContextItemTypes.TAB_CONTENT) {
+    if (metadata?.displayName) {
+      return metadata.displayName;
+    }
+
+    // Fallback to title-based summary
+    if (metadata?.title) {
+      const words = metadata.title
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2)
+        .slice(0, 4);
+      
+      if (words.length >= 2) {
+        return words.join(' ');
+      }
+    }
+
+    // Fallback to domain name
+    if (metadata?.url) {
+      try {
+        const urlObj = new URL(metadata.url);
+        const domain = urlObj.hostname.replace('www.', '');
+        return `${domain} Content`;
+      } catch {
+        return 'Web Content';
+      }
+    }
+
+    return 'Web Content';
+  }
+
+  // For screenshots, use URL or title
+  if (type === ContextItemTypes.SCREENSHOT) {
+    if (metadata?.title) {
+      return `Screenshot: ${metadata.title.substring(0, 20)}`;
+    }
+    if (metadata?.url) {
+      try {
+        const urlObj = new URL(metadata.url);
+        return `Screenshot: ${urlObj.hostname.replace('www.', '')}`;
+      } catch {
+        return 'Screenshot';
+      }
+    }
+    return 'Screenshot';
+  }
+
+  // Default fallback
+  return metadata?.fileName || metadata?.title || metadata?.url || 'Content';
+}
+
+/**
  * Update context items list
  */
 function updateContextItems() {
@@ -429,7 +501,11 @@ function updateContextItems() {
 
     const info = document.createElement('div');
     info.className = 'context-item-info';
-    info.textContent = `${getContextItemIcon(item.type, item.metadata?.fileName)} ${item.metadata?.fileName || item.metadata?.url || 'Content'}`;
+    
+    const displayName = getContextItemDisplayName(item);
+    const icon = getContextItemIcon(item.type, item.metadata?.fileName);
+    
+    info.textContent = `${icon} ${displayName}`;
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'context-item-remove';
