@@ -142,26 +142,5 @@ export class StorageManager {
     return await this.getSession(sessionId);
   }
 
-  /**
-   * Save API key securely
-   */
-  static async saveApiKey(apiKey) {
-    await this.save('gemini_api_key', apiKey);
-    return true;
-  }
 
-  /**
-   * Get API key
-   */
-  static async getApiKey() {
-    return await this.load('gemini_api_key');
-  }
-
-  /**
-   * Remove API key
-   */
-  static async removeApiKey() {
-    await this.remove('gemini_api_key');
-    return true;
-  }
 }
