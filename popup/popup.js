@@ -1,12 +1,24 @@
-import { MessageTypes, ContextItemTypes } from '../utils/constants.js';
-import { formatDate, getContextItemIcon, copyToClipboard, readFileAsText, validateFile } from '../utils/helpers.js';
-import { StorageManager } from '../utils/storage.js';
+import { MessageTypes, ContextItemTypes } from "../utils/constants.js";
+import {
+  formatDate,
+  getContextItemIcon,
+  copyToClipboard,
+  readFileAsText,
+  validateFile,
+} from "../utils/helpers.js";
+import { StorageManager } from "../utils/storage.js";
 
 // DOM elements
 let apiKeySection, apiKeyInput, saveApiKeyBtn, settingsBtn;
 let sessionSelect, newSessionBtn, taskInput, uploadFileBtn, fileInput;
 let screenshotBtn, extractTabBtn, contextItemsList, contextCount;
-let optimizeBtn, openPageBtn, statusSection, statusText, resultSection, resultContent, copyBtn;
+let optimizeBtn,
+  openPageBtn,
+  statusSection,
+  statusText,
+  resultSection,
+  resultContent,
+  copyBtn;
 
 // Current state
 let currentWindowId = null;
@@ -14,7 +26,7 @@ let currentSession = null;
 let hasApiKey = false;
 
 // Initialize popup
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initializeElements();
   attachEventListeners();
   await checkApiKey();
@@ -28,44 +40,44 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Initialize DOM element references
  */
 function initializeElements() {
-  apiKeySection = document.getElementById('api-key-section');
-  apiKeyInput = document.getElementById('api-key-input');
-  saveApiKeyBtn = document.getElementById('save-api-key-btn');
-  settingsBtn = document.getElementById('settings-btn');
-  sessionSelect = document.getElementById('session-select');
-  newSessionBtn = document.getElementById('new-session-btn');
-  taskInput = document.getElementById('task-input');
-  uploadFileBtn = document.getElementById('upload-file-btn');
-  fileInput = document.getElementById('file-input');
-  screenshotBtn = document.getElementById('screenshot-btn');
-  extractTabBtn = document.getElementById('extract-tab-btn');
-  contextItemsList = document.getElementById('context-items-list');
-  contextCount = document.getElementById('context-count');
-  optimizeBtn = document.getElementById('optimize-btn');
-  openPageBtn = document.getElementById('open-page-btn');
-  statusSection = document.getElementById('status-section');
-  statusText = document.getElementById('status-text');
-  resultSection = document.getElementById('result-section');
-  resultContent = document.getElementById('result-content');
-  copyBtn = document.getElementById('copy-btn');
+  apiKeySection = document.getElementById("api-key-section");
+  apiKeyInput = document.getElementById("api-key-input");
+  saveApiKeyBtn = document.getElementById("save-api-key-btn");
+  settingsBtn = document.getElementById("settings-btn");
+  sessionSelect = document.getElementById("session-select");
+  newSessionBtn = document.getElementById("new-session-btn");
+  taskInput = document.getElementById("task-input");
+  uploadFileBtn = document.getElementById("upload-file-btn");
+  fileInput = document.getElementById("file-input");
+  screenshotBtn = document.getElementById("screenshot-btn");
+  extractTabBtn = document.getElementById("extract-tab-btn");
+  contextItemsList = document.getElementById("context-items-list");
+  contextCount = document.getElementById("context-count");
+  optimizeBtn = document.getElementById("optimize-btn");
+  openPageBtn = document.getElementById("open-page-btn");
+  statusSection = document.getElementById("status-section");
+  statusText = document.getElementById("status-text");
+  resultSection = document.getElementById("result-section");
+  resultContent = document.getElementById("result-content");
+  copyBtn = document.getElementById("copy-btn");
 }
 
 /**
  * Attach event listeners
  */
 function attachEventListeners() {
-  saveApiKeyBtn.addEventListener('click', handleSaveApiKey);
-  settingsBtn.addEventListener('click', handleSettings);
-  sessionSelect.addEventListener('change', handleSessionChange);
-  newSessionBtn.addEventListener('click', handleNewSession);
-  taskInput.addEventListener('input', handleTaskInput);
-  uploadFileBtn.addEventListener('click', () => fileInput.click());
-  fileInput.addEventListener('change', handleFileUpload);
-  screenshotBtn.addEventListener('click', handleScreenshot);
-  extractTabBtn.addEventListener('click', handleExtractTab);
-  optimizeBtn.addEventListener('click', handleOptimize);
-  openPageBtn.addEventListener('click', handleOpenPage);
-  copyBtn.addEventListener('click', handleCopy);
+  saveApiKeyBtn.addEventListener("click", handleSaveApiKey);
+  settingsBtn.addEventListener("click", handleSettings);
+  sessionSelect.addEventListener("change", handleSessionChange);
+  newSessionBtn.addEventListener("click", handleNewSession);
+  taskInput.addEventListener("input", handleTaskInput);
+  uploadFileBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", handleFileUpload);
+  screenshotBtn.addEventListener("click", handleScreenshot);
+  extractTabBtn.addEventListener("click", handleExtractTab);
+  optimizeBtn.addEventListener("click", handleOptimize);
+  openPageBtn.addEventListener("click", handleOpenPage);
+  copyBtn.addEventListener("click", handleCopy);
 }
 
 /**
@@ -76,9 +88,9 @@ async function checkApiKey() {
   hasApiKey = !!apiKey;
 
   if (hasApiKey) {
-    apiKeySection.style.display = 'none';
+    apiKeySection.style.display = "none";
   } else {
-    apiKeySection.style.display = 'block';
+    apiKeySection.style.display = "block";
     // Disable all functionality until API key is set
     disableAllControls();
   }
@@ -91,11 +103,11 @@ async function handleSaveApiKey() {
   const apiKey = apiKeyInput.value.trim();
 
   if (!apiKey) {
-    showError('Please enter an API key');
+    showError("Please enter an API key");
     return;
   }
 
-  if (!apiKey.startsWith('AIza')) {
+  if (!apiKey.startsWith("AIza")) {
     showError('Invalid API key format. Gemini API keys start with "AIza"');
     return;
   }
@@ -103,13 +115,13 @@ async function handleSaveApiKey() {
   try {
     await StorageManager.saveApiKey(apiKey);
     hasApiKey = true;
-    apiKeySection.style.display = 'none';
-    apiKeyInput.value = '';
+    apiKeySection.style.display = "none";
+    apiKeyInput.value = "";
     enableAllControls();
-    showSuccess('API key saved successfully!');
+    showSuccess("API key saved successfully!");
   } catch (error) {
-    console.error('Failed to save API key:', error);
-    showError('Failed to save API key');
+    console.error("Failed to save API key:", error);
+    showError("Failed to save API key");
   }
 }
 
@@ -117,10 +129,12 @@ async function handleSaveApiKey() {
  * Handle settings button
  */
 function handleSettings() {
-  const action = confirm('Do you want to update your API key?\n\nClick OK to update, Cancel to remove it.');
+  const action = confirm(
+    "Do you want to update your API key?\n\nClick OK to update, Cancel to remove it."
+  );
 
   if (action) {
-    apiKeySection.style.display = 'block';
+    apiKeySection.style.display = "block";
   } else {
     handleRemoveApiKey();
   }
@@ -130,18 +144,20 @@ function handleSettings() {
  * Handle remove API key
  */
 async function handleRemoveApiKey() {
-  const confirm = window.confirm('Are you sure you want to remove your API key?');
+  const confirm = window.confirm(
+    "Are you sure you want to remove your API key?"
+  );
   if (!confirm) return;
 
   try {
     await StorageManager.removeApiKey();
     hasApiKey = false;
-    apiKeySection.style.display = 'block';
+    apiKeySection.style.display = "block";
     disableAllControls();
-    showSuccess('API key removed');
+    showSuccess("API key removed");
   } catch (error) {
-    console.error('Failed to remove API key:', error);
-    showError('Failed to remove API key');
+    console.error("Failed to remove API key:", error);
+    showError("Failed to remove API key");
   }
 }
 
@@ -187,15 +203,15 @@ async function loadSessions() {
     sessionSelect.innerHTML = '<option value="">Select a session...</option>';
 
     // Add sessions
-    sessions.forEach(session => {
-      const option = document.createElement('option');
+    sessions.forEach((session) => {
+      const option = document.createElement("option");
       option.value = session.id;
       option.textContent = session.name;
       sessionSelect.appendChild(option);
     });
   } catch (error) {
-    console.error('Failed to load sessions:', error);
-    showError('Failed to load sessions');
+    console.error("Failed to load sessions:", error);
+    showError("Failed to load sessions");
   }
 }
 
@@ -205,7 +221,7 @@ async function loadSessions() {
 async function loadActiveSession() {
   try {
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
-      windowId: currentWindowId
+      windowId: currentWindowId,
     });
 
     if (response.data) {
@@ -214,7 +230,7 @@ async function loadActiveSession() {
       updateUI();
     }
   } catch (error) {
-    console.error('Failed to load active session:', error);
+    console.error("Failed to load active session:", error);
   }
 }
 
@@ -234,19 +250,19 @@ async function handleSessionChange() {
     // Set as active session
     await sendMessage(MessageTypes.SET_ACTIVE_SESSION, {
       windowId: currentWindowId,
-      sessionId: sessionId
+      sessionId: sessionId,
     });
 
     // Load session data
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
-      windowId: currentWindowId
+      windowId: currentWindowId,
     });
 
     currentSession = response.data;
     updateUI();
   } catch (error) {
-    console.error('Failed to change session:', error);
-    showError('Failed to change session');
+    console.error("Failed to change session:", error);
+    showError("Failed to change session");
   }
 }
 
@@ -254,14 +270,14 @@ async function handleSessionChange() {
  * Handle new session creation
  */
 async function handleNewSession() {
-  const name = prompt('Enter session name:');
+  const name = prompt("Enter session name:");
   if (!name) return;
 
   try {
     const response = await sendMessage(MessageTypes.CREATE_SESSION, {
       windowId: currentWindowId,
       name: name,
-      taskDescription: ''
+      taskDescription: "",
     });
 
     currentSession = response.data;
@@ -269,8 +285,8 @@ async function handleNewSession() {
     sessionSelect.value = currentSession.id;
     updateUI();
   } catch (error) {
-    console.error('Failed to create session:', error);
-    showError('Failed to create session');
+    console.error("Failed to create session:", error);
+    showError("Failed to create session");
   }
 }
 
@@ -284,14 +300,14 @@ async function handleTaskInput() {
     await sendMessage(MessageTypes.UPDATE_SESSION, {
       sessionId: currentSession.id,
       updates: {
-        taskDescription: taskInput.value
-      }
+        taskDescription: taskInput.value,
+      },
     });
 
     currentSession.taskDescription = taskInput.value;
     updateOptimizeButton();
   } catch (error) {
-    console.error('Failed to update task:', error);
+    console.error("Failed to update task:", error);
   }
 }
 
@@ -300,7 +316,7 @@ async function handleTaskInput() {
  */
 async function handleFileUpload() {
   if (!currentSession) {
-    showError('Please select or create a session first');
+    showError("Please select or create a session first");
     return;
   }
 
@@ -323,18 +339,18 @@ async function handleFileUpload() {
           content: content,
           metadata: {
             fileName: file.name,
-            size: file.size
-          }
-        }
+            size: file.size,
+          },
+        },
       });
     } catch (error) {
-      console.error('Failed to upload file:', error);
+      console.error("Failed to upload file:", error);
       showError(`Failed to upload ${file.name}: ${error.message}`);
     }
   }
 
   // Clear file input
-  fileInput.value = '';
+  fileInput.value = "";
 
   // Reload session
   await reloadSession();
@@ -345,7 +361,7 @@ async function handleFileUpload() {
  */
 async function handleScreenshot() {
   if (!currentSession) {
-    showError('Please select or create a session first');
+    showError("Please select or create a session first");
     return;
   }
 
@@ -358,14 +374,14 @@ async function handleScreenshot() {
       contextItem: {
         type: ContextItemTypes.SCREENSHOT,
         content: content,
-        metadata: metadata
-      }
+        metadata: metadata,
+      },
     });
 
     await reloadSession();
   } catch (error) {
-    console.error('Failed to capture screenshot:', error);
-    showError('Failed to capture screenshot');
+    console.error("Failed to capture screenshot:", error);
+    showError("Failed to capture screenshot");
   }
 }
 
@@ -374,7 +390,7 @@ async function handleScreenshot() {
  */
 async function handleExtractTab() {
   if (!currentSession) {
-    showError('Please select or create a session first');
+    showError("Please select or create a session first");
     return;
   }
 
@@ -387,14 +403,14 @@ async function handleExtractTab() {
       contextItem: {
         type: ContextItemTypes.TAB_CONTENT,
         content: content,
-        metadata: metadata
-      }
+        metadata: metadata,
+      },
     });
 
     await reloadSession();
   } catch (error) {
-    console.error('Failed to extract tab content:', error);
-    showError('Failed to extract tab content');
+    console.error("Failed to extract tab content:", error);
+    showError("Failed to extract tab content");
   }
 }
 
@@ -406,17 +422,17 @@ async function handleOptimize() {
 
   try {
     optimizeBtn.disabled = true;
-    resultSection.style.display = 'none';
-    statusSection.style.display = 'block';
-    statusText.textContent = 'Starting optimization...';
+    resultSection.style.display = "none";
+    statusSection.style.display = "block";
+    statusText.textContent = "Starting optimization...";
 
     await sendMessage(MessageTypes.START_OPTIMIZATION, {
-      sessionId: currentSession.id
+      sessionId: currentSession.id,
     });
   } catch (error) {
-    console.error('Optimization failed:', error);
-    showError('Optimization failed: ' + error.message);
-    statusSection.style.display = 'none';
+    console.error("Optimization failed:", error);
+    showError("Optimization failed: " + error.message);
+    statusSection.style.display = "none";
     optimizeBtn.disabled = false;
   }
 }
@@ -426,7 +442,7 @@ async function handleOptimize() {
  */
 function handleOpenPage() {
   chrome.tabs.create({
-    url: chrome.runtime.getURL('extension-page/extension-page.html')
+    url: chrome.runtime.getURL("extension-page/extension-page.html"),
   });
 }
 
@@ -438,12 +454,12 @@ async function handleCopy() {
   const success = await copyToClipboard(text);
 
   if (success) {
-    copyBtn.textContent = '✓ Copied!';
+    copyBtn.textContent = "✓ Copied!";
     setTimeout(() => {
-      copyBtn.textContent = '📋 Copy to Clipboard';
+      copyBtn.textContent = "📋 Copy to Clipboard";
     }, 2000);
   } else {
-    showError('Failed to copy to clipboard');
+    showError("Failed to copy to clipboard");
   }
 }
 
@@ -456,13 +472,13 @@ async function handleRemoveItem(itemId) {
   try {
     await sendMessage(MessageTypes.REMOVE_CONTEXT_ITEM, {
       sessionId: currentSession.id,
-      itemId: itemId
+      itemId: itemId,
     });
 
     await reloadSession();
   } catch (error) {
-    console.error('Failed to remove item:', error);
-    showError('Failed to remove item');
+    console.error("Failed to remove item:", error);
+    showError("Failed to remove item");
   }
 }
 
@@ -474,13 +490,13 @@ async function reloadSession() {
 
   try {
     const response = await sendMessage(MessageTypes.GET_ACTIVE_SESSION, {
-      windowId: currentWindowId
+      windowId: currentWindowId,
     });
 
     currentSession = response.data;
     updateUI();
   } catch (error) {
-    console.error('Failed to reload session:', error);
+    console.error("Failed to reload session:", error);
   }
 }
 
@@ -489,10 +505,11 @@ async function reloadSession() {
  */
 function updateUI() {
   if (!currentSession) {
-    taskInput.value = '';
+    taskInput.value = "";
     taskInput.disabled = true;
-    contextItemsList.innerHTML = '<p class="empty-state">No context items yet</p>';
-    contextCount.textContent = '0';
+    contextItemsList.innerHTML =
+      '<p class="empty-state">No context items yet</p>';
+    contextCount.textContent = "0";
     optimizeBtn.disabled = true;
     uploadFileBtn.disabled = true;
     screenshotBtn.disabled = true;
@@ -507,7 +524,7 @@ function updateUI() {
   extractTabBtn.disabled = false;
 
   // Update task input
-  taskInput.value = currentSession.taskDescription || '';
+  taskInput.value = currentSession.taskDescription || "";
 
   // Update context items
   updateContextItems();
@@ -524,23 +541,27 @@ function updateContextItems() {
   contextCount.textContent = items.length;
 
   if (items.length === 0) {
-    contextItemsList.innerHTML = '<p class="empty-state">No context items yet</p>';
+    contextItemsList.innerHTML =
+      '<p class="empty-state">No context items yet</p>';
     return;
   }
 
-  contextItemsList.innerHTML = '';
+  contextItemsList.innerHTML = "";
 
-  items.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'context-item';
+  items.forEach((item) => {
+    const div = document.createElement("div");
+    div.className = "context-item";
 
-    const info = document.createElement('div');
-    info.className = 'context-item-info';
-    info.textContent = `${getContextItemIcon(item.type, item.metadata?.fileName)} ${item.metadata?.fileName || item.metadata?.url || 'Content'}`;
+    const info = document.createElement("div");
+    info.className = "context-item-info";
+    info.textContent = `${getContextItemIcon(
+      item.type,
+      item.metadata?.fileName
+    )} ${item.metadata?.fileName || item.metadata?.url || "Content"}`;
 
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'context-item-remove';
-    removeBtn.textContent = '×';
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "context-item-remove";
+    removeBtn.textContent = "×";
     removeBtn.onclick = () => handleRemoveItem(item.id);
 
     div.appendChild(info);
@@ -557,6 +578,23 @@ function updateOptimizeButton() {
   const hasContext = currentSession?.contextItems?.length > 0;
 
   optimizeBtn.disabled = !hasTask || !hasContext;
+
+  // Update button text based on whether we have an existing prompt
+  if (
+    currentSession?.currentPrompt &&
+    currentSession?.lastOptimizedContextIds?.length > 0
+  ) {
+    const newItemsCount =
+      currentSession.contextItems.length -
+      currentSession.lastOptimizedContextIds.length;
+    if (newItemsCount > 0) {
+      optimizeBtn.textContent = `⚡ Extend Prompt (+${newItemsCount} new)`;
+    } else {
+      optimizeBtn.textContent = "🔄 Re-optimize";
+    }
+  } else {
+    optimizeBtn.textContent = "✨ Optimize Prompt";
+  }
 }
 
 /**
@@ -570,15 +608,20 @@ function setupMessageListener() {
 
     if (message.type === MessageTypes.OPTIMIZATION_COMPLETE) {
       const result = message.payload.result;
-      statusSection.style.display = 'none';
-      resultSection.style.display = 'block';
+      statusSection.style.display = "none";
+      resultSection.style.display = "block";
       resultContent.textContent = result.optimizedPrompt;
       optimizeBtn.disabled = false;
+
+      // Show indicator if incremental optimization was used
+      if (result.usedIncremental) {
+        showSuccess("✨ Prompt extended with new context!");
+      }
     }
 
     if (message.type === MessageTypes.OPTIMIZATION_ERROR) {
-      statusSection.style.display = 'none';
-      showError('Optimization failed: ' + message.payload.error);
+      statusSection.style.display = "none";
+      showError("Optimization failed: " + message.payload.error);
       optimizeBtn.disabled = false;
     }
   });
@@ -598,7 +641,7 @@ function sendMessage(type, payload = {}) {
       if (response && response.success) {
         resolve(response);
       } else {
-        reject(new Error(response?.error || 'Unknown error'));
+        reject(new Error(response?.error || "Unknown error"));
       }
     });
   });
@@ -608,12 +651,12 @@ function sendMessage(type, payload = {}) {
  * Show error message
  */
 function showError(message) {
-  alert('❌ ' + message);
+  alert("❌ " + message);
 }
 
 /**
  * Show success message
  */
 function showSuccess(message) {
-  alert('✅ ' + message);
+  alert("✅ " + message);
 }

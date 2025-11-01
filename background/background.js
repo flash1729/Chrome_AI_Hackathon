@@ -1,25 +1,25 @@
-import { MessageTypes } from '../utils/constants.js';
-import { SessionManager } from '../utils/session-manager.js';
-import { GeminiAPIHandler } from '../utils/gemini-api.js';
-import { StorageManager } from '../utils/storage.js';
+import { MessageTypes } from "../utils/constants.js";
+import { SessionManager } from "../utils/session-manager.js";
+import { GeminiAPIHandler } from "../utils/gemini-api.js";
+import { StorageManager } from "../utils/storage.js";
 
-console.log('Background service worker loaded');
+console.log("Background service worker loaded");
 
 // Initialize extension
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Smart Context Generator installed');
+  console.log("Smart Context Generator installed");
 });
 
 // Handle messages from popup, extension page, and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Received message:', message.type);
+  console.log("Received message:", message.type);
 
   handleMessage(message, sender)
-    .then(response => {
+    .then((response) => {
       sendResponse({ success: true, data: response });
     })
-    .catch(error => {
-      console.error('Message handler error:', error);
+    .catch((error) => {
+      console.error("Message handler error:", error);
       sendResponse({ success: false, error: error.message });
     });
 
@@ -69,6 +69,9 @@ async function handleMessage(message, sender) {
     // Optimization
     case MessageTypes.START_OPTIMIZATION:
       return await handleStartOptimization(payload);
+
+    case MessageTypes.RESET_PROMPT:
+      return await handleResetPrompt(payload);
 
     default:
       throw new Error(`Unknown message type: ${type}`);
@@ -123,38 +126,46 @@ async function handleRemoveContextItem(payload) {
 async function handleCaptureScreenshot(payload) {
   try {
     // Get active tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
 
     // Capture visible tab
-    const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+    const dataUrl = await chrome.tabs.captureVisibleTab(null, {
+      format: "png",
+    });
 
     return {
       content: dataUrl,
       metadata: {
         url: tab.url,
         title: tab.title,
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     };
   } catch (error) {
-    console.error('Screenshot capture error:', error);
-    throw new Error('Failed to capture screenshot: ' + error.message);
+    console.error("Screenshot capture error:", error);
+    throw new Error("Failed to capture screenshot: " + error.message);
   }
 }
 
 async function handleExtractTabContent(payload) {
   try {
     // Get active tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
 
     // Inject content script if needed and extract content
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: extractPageContent
+      func: extractPageContent,
     });
 
     if (!results || !results[0]) {
-      throw new Error('Failed to extract content');
+      throw new Error("Failed to extract content");
     }
 
     return {
@@ -162,12 +173,12 @@ async function handleExtractTabContent(payload) {
       metadata: {
         url: tab.url,
         title: results[0].result.title,
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     };
   } catch (error) {
-    console.error('Tab content extraction error:', error);
-    throw new Error('Failed to extract tab content: ' + error.message);
+    console.error("Tab content extraction error:", error);
+    throw new Error("Failed to extract tab content: " + error.message);
   }
 }
 
@@ -177,14 +188,20 @@ async function handleExtractTabContent(payload) {
 function extractPageContent() {
   // Remove script and style tags
   const clone = document.body.cloneNode(true);
-  const scripts = clone.querySelectorAll('script, style, noscript');
-  scripts.forEach(el => el.remove());
+  const scripts = clone.querySelectorAll("script, style, noscript");
+  scripts.forEach((el) => el.remove());
 
   // Get main content
-  let content = '';
+  let content = "";
 
   // Try to find main content area
-  const mainSelectors = ['main', 'article', '[role="main"]', '.content', '#content'];
+  const mainSelectors = [
+    "main",
+    "article",
+    '[role="main"]',
+    ".content",
+    "#content",
+  ];
   for (const selector of mainSelectors) {
     const main = clone.querySelector(selector);
     if (main) {
@@ -199,18 +216,26 @@ function extractPageContent() {
   }
 
   // Clean up whitespace
-  content = content.replace(/\s+/g, ' ').trim();
+  content = content.replace(/\s+/g, " ").trim();
 
   // Limit content length
   const maxLength = 10000;
   if (content.length > maxLength) {
-    content = content.substring(0, maxLength) + '...';
+    content = content.substring(0, maxLength) + "...";
   }
 
   return {
     content: content,
-    title: document.title
+    title: document.title,
   };
+}
+
+/**
+ * Reset prompt handler
+ */
+async function handleResetPrompt(payload) {
+  const { sessionId } = payload;
+  return await SessionManager.resetCurrentPrompt(sessionId);
 }
 
 /**
@@ -223,41 +248,82 @@ async function handleStartOptimization(payload) {
     // Get session
     const session = await SessionManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
-
-    // Send status update
-    broadcastOptimizationStatus(sessionId, 'Checking context sufficiency...');
 
     // Get API key from storage
     const apiKey = await StorageManager.getApiKey();
     if (!apiKey) {
-      throw new Error('API key not configured. Please set your Gemini API key in settings.');
+      throw new Error(
+        "API key not configured. Please set your Gemini API key in settings."
+      );
     }
 
     // Initialize Gemini API
     const gemini = new GeminiAPIHandler(apiKey);
 
-    // Stage 1: Sufficiency Check
-    const sufficiencyResult = await checkContextSufficiency(gemini, session);
+    // Check if we can do incremental optimization
+    const newContextItems = await SessionManager.getNewContextItems(sessionId);
+    const hasExistingPrompt =
+      session.currentPrompt && session.currentPrompt.trim().length > 0;
+    const canDoIncremental =
+      hasExistingPrompt &&
+      newContextItems.length > 0 &&
+      session.contextItems.length > newContextItems.length;
 
-    let additionalContext = '';
+    let optimizedPrompt;
+    let usedIncremental = false;
 
-    // Stage 2: Web Research (if needed)
-    if (!sufficiencyResult.is_sufficient) {
-      broadcastOptimizationStatus(sessionId, 'Gathering additional information from the web...');
-      additionalContext = await performWebResearch(gemini, session, sufficiencyResult);
+    if (canDoIncremental) {
+      // Incremental optimization - extend existing prompt
+      broadcastOptimizationStatus(
+        sessionId,
+        "Extending existing prompt with new context..."
+      );
+      optimizedPrompt = await extendExistingPrompt(
+        gemini,
+        session,
+        newContextItems
+      );
+      usedIncremental = true;
+    } else {
+      // Full optimization - rebuild from scratch
+      // Send status update
+      broadcastOptimizationStatus(sessionId, "Checking context sufficiency...");
+
+      // Stage 1: Sufficiency Check
+      const sufficiencyResult = await checkContextSufficiency(gemini, session);
+
+      let additionalContext = "";
+
+      // Stage 2: Web Research (if needed)
+      if (!sufficiencyResult.is_sufficient) {
+        broadcastOptimizationStatus(
+          sessionId,
+          "Gathering additional information from the web..."
+        );
+        additionalContext = await performWebResearch(
+          gemini,
+          session,
+          sufficiencyResult
+        );
+      }
+
+      // Stage 3: Final Optimization
+      broadcastOptimizationStatus(sessionId, "Generating optimized prompt...");
+      optimizedPrompt = await generateOptimizedPrompt(
+        gemini,
+        session,
+        additionalContext
+      );
     }
-
-    // Stage 3: Final Optimization
-    broadcastOptimizationStatus(sessionId, 'Generating optimized prompt...');
-    const optimizedPrompt = await generateOptimizedPrompt(gemini, session, additionalContext);
 
     // Save result
     const result = await SessionManager.addOptimizationResult(sessionId, {
       optimizedPrompt,
-      usedWebResearch: !sufficiencyResult.is_sufficient,
-      searchQueries: sufficiencyResult.suggested_queries || []
+      usedWebResearch: !canDoIncremental,
+      usedIncremental: usedIncremental,
+      searchQueries: [],
     });
 
     // Broadcast completion
@@ -265,7 +331,7 @@ async function handleStartOptimization(payload) {
 
     return result;
   } catch (error) {
-    console.error('Optimization error:', error);
+    console.error("Optimization error:", error);
     broadcastOptimizationError(sessionId, error.message);
     throw error;
   }
@@ -275,10 +341,13 @@ async function handleStartOptimization(payload) {
  * Check context sufficiency using Gemini function calling
  */
 async function checkContextSufficiency(gemini, session) {
-  const contextSummary = session.contextItems.map(item => {
-    return `[${item.type}] ${item.metadata?.fileName || item.metadata?.url || 'Content'}: ${item.content.substring(0, 200)
-      }...`;
-  }).join('\n');
+  const contextSummary = session.contextItems
+    .map((item) => {
+      return `[${item.type}] ${
+        item.metadata?.fileName || item.metadata?.url || "Content"
+      }: ${item.content.substring(0, 200)}...`;
+    })
+    .join("\n");
 
   const prompt = `
 Task/Issue: ${session.taskDescription}
@@ -289,42 +358,51 @@ ${contextSummary}
 Evaluate if this context is sufficient to create an optimized prompt for the task.
 `;
 
-  const functions = [{
-    name: 'evaluate_context_sufficiency',
-    description: 'Evaluates whether the provided context is sufficient to optimize the prompt for the given task',
-    parameters: {
-      type: 'object',
-      properties: {
-        is_sufficient: {
-          type: 'boolean',
-          description: 'Whether the context is sufficient for the task'
+  const functions = [
+    {
+      name: "evaluate_context_sufficiency",
+      description:
+        "Evaluates whether the provided context is sufficient to optimize the prompt for the given task",
+      parameters: {
+        type: "object",
+        properties: {
+          is_sufficient: {
+            type: "boolean",
+            description: "Whether the context is sufficient for the task",
+          },
+          confidence: {
+            type: "number",
+            description: "Confidence level from 0 to 1",
+          },
+          reasoning: {
+            type: "string",
+            description: "Explanation of the sufficiency determination",
+          },
+          suggested_queries: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Search queries to gather missing information (only if insufficient)",
+          },
+          missing_aspects: {
+            type: "array",
+            items: { type: "string" },
+            description: "Specific aspects of information that are missing",
+          },
         },
-        confidence: {
-          type: 'number',
-          description: 'Confidence level from 0 to 1'
-        },
-        reasoning: {
-          type: 'string',
-          description: 'Explanation of the sufficiency determination'
-        },
-        suggested_queries: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Search queries to gather missing information (only if insufficient)'
-        },
-        missing_aspects: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Specific aspects of information that are missing'
-        }
+        required: ["is_sufficient", "confidence", "reasoning"],
       },
-      required: ['is_sufficient', 'confidence', 'reasoning']
-    }
-  }];
+    },
+  ];
 
-  const systemInstruction = 'You are an expert at evaluating context sufficiency for LLM prompts. Analyze the task and available context to determine if additional information is needed.';
+  const systemInstruction =
+    "You are an expert at evaluating context sufficiency for LLM prompts. Analyze the task and available context to determine if additional information is needed.";
 
-  const result = await gemini.generateContentWithFunctions(prompt, functions, systemInstruction);
+  const result = await gemini.generateContentWithFunctions(
+    prompt,
+    functions,
+    systemInstruction
+  );
 
   return result.args;
 }
@@ -335,26 +413,110 @@ Evaluate if this context is sufficient to create an optimized prompt for the tas
 async function performWebResearch(gemini, session, sufficiencyResult) {
   const prompt = `
 Task: ${session.taskDescription}
-Missing Aspects: ${sufficiencyResult.missing_aspects.join(', ')}
+Missing Aspects: ${sufficiencyResult.missing_aspects.join(", ")}
 
 Search the web and gather relevant information to fill the gaps in the context.
 Provide a comprehensive summary of findings.
 `;
 
-  const systemInstruction = 'You are a research assistant. Search for and synthesize relevant information to help complete the context for the given task.';
+  const systemInstruction =
+    "You are a research assistant. Search for and synthesize relevant information to help complete the context for the given task.";
 
-  const result = await gemini.generateContentWithGoogleSearch(prompt, systemInstruction);
+  const result = await gemini.generateContentWithGoogleSearch(
+    prompt,
+    systemInstruction
+  );
 
   return result.text;
+}
+
+/**
+ * Extend existing prompt with new context items (incremental optimization)
+ */
+async function extendExistingPrompt(gemini, session, newContextItems) {
+  // Format new context items
+  const newContextFormatted = newContextItems
+    .map((item) => {
+      const label = item.metadata?.fileName || item.metadata?.url || "Content";
+      return `<FILE_DATA name="${label}" type="${item.type}">\n${item.content}\n</FILE_DATA>`;
+    })
+    .join("\n\n");
+
+  // Find where to insert new context in the existing prompt
+  const existingPrompt = session.currentPrompt;
+
+  // Strategy 1: Look for closing </CONTEXT> or similar tags
+  const contextEndPatterns = [
+    /<\/CONTEXT>/i,
+    /<\/FILE_DATA>/i,
+    /<\/RAW_USER_PROMPT>/i,
+    /<\/WEB_RESEARCH_DATA>/i,
+  ];
+
+  let insertPosition = -1;
+  let insertAfterTag = "";
+
+  for (const pattern of contextEndPatterns) {
+    const matches = [...existingPrompt.matchAll(new RegExp(pattern, "gi"))];
+    if (matches.length > 0) {
+      // Get the last occurrence
+      const lastMatch = matches[matches.length - 1];
+      insertPosition = lastMatch.index + lastMatch[0].length;
+      insertAfterTag = lastMatch[0];
+      break;
+    }
+  }
+
+  // Strategy 2: If no context tags found, look for format/output section
+  if (insertPosition === -1) {
+    const formatPatterns = [
+      /## Output Format/i,
+      /# FORMAT/i,
+      /# Output/i,
+      /Output:/i,
+    ];
+
+    for (const pattern of formatPatterns) {
+      const match = existingPrompt.match(pattern);
+      if (match) {
+        insertPosition = match.index;
+        break;
+      }
+    }
+  }
+
+  // Strategy 3: If still not found, append to the end
+  if (insertPosition === -1) {
+    insertPosition = existingPrompt.length;
+  }
+
+  // Build the extended prompt
+  const beforeInsert = existingPrompt.substring(0, insertPosition);
+  const afterInsert = existingPrompt.substring(insertPosition);
+
+  // Add new context with clear separator
+  const separator =
+    insertPosition === existingPrompt.length
+      ? "\n\n## Additional Context\n\n"
+      : "\n\n";
+
+  const extendedPrompt =
+    beforeInsert + separator + newContextFormatted + "\n" + afterInsert;
+
+  return extendedPrompt;
 }
 
 /**
  * Generate optimized prompt using ideal LLM prompt structure
  */
 async function generateOptimizedPrompt(gemini, session, additionalContext) {
-  const contextSummary = session.contextItems.map(item => {
-    return `[${item.type}] ${item.metadata?.fileName || item.metadata?.url || 'Content'}:\n${item.content}\n`;
-  }).join('\n---\n');
+  const contextSummary = session.contextItems
+    .map((item) => {
+      return `[${item.type}] ${
+        item.metadata?.fileName || item.metadata?.url || "Content"
+      }:\n${item.content}\n`;
+    })
+    .join("\n---\n");
 
   const prompt = `
 Original User Task: ${session.taskDescription}
@@ -362,7 +524,7 @@ Original User Task: ${session.taskDescription}
 Available Context:
 ${contextSummary}
 
-${additionalContext ? `Additional Research:\n${additionalContext}\n` : ''}
+${additionalContext ? `Additional Research:\n${additionalContext}\n` : ""}
 
 Transform this into an ideal LLM prompt using the 5-component structure: Role/Persona, Task/Instruction, Context, Examples (if applicable), and Format/Output Constraints.
 `;
@@ -426,40 +588,46 @@ Generate the optimized prompt as a complete, ready-to-use prompt that follows th
  * Broadcast optimization status to all listeners
  */
 function broadcastOptimizationStatus(sessionId, status) {
-  chrome.runtime.sendMessage({
-    type: MessageTypes.OPTIMIZATION_STATUS,
-    payload: { sessionId, status }
-  }).catch(() => {
-    // Ignore errors if no listeners
-  });
+  chrome.runtime
+    .sendMessage({
+      type: MessageTypes.OPTIMIZATION_STATUS,
+      payload: { sessionId, status },
+    })
+    .catch(() => {
+      // Ignore errors if no listeners
+    });
 }
 
 /**
  * Broadcast optimization completion
  */
 function broadcastOptimizationComplete(sessionId, result) {
-  chrome.runtime.sendMessage({
-    type: MessageTypes.OPTIMIZATION_COMPLETE,
-    payload: { sessionId, result }
-  }).catch(() => {
-    // Ignore errors if no listeners
-  });
+  chrome.runtime
+    .sendMessage({
+      type: MessageTypes.OPTIMIZATION_COMPLETE,
+      payload: { sessionId, result },
+    })
+    .catch(() => {
+      // Ignore errors if no listeners
+    });
 }
 
 /**
  * Broadcast optimization error
  */
 function broadcastOptimizationError(sessionId, error) {
-  chrome.runtime.sendMessage({
-    type: MessageTypes.OPTIMIZATION_ERROR,
-    payload: { sessionId, error }
-  }).catch(() => {
-    // Ignore errors if no listeners
-  });
+  chrome.runtime
+    .sendMessage({
+      type: MessageTypes.OPTIMIZATION_ERROR,
+      payload: { sessionId, error },
+    })
+    .catch(() => {
+      // Ignore errors if no listeners
+    });
 }
 
 // Track window closures
 chrome.windows.onRemoved.addListener((windowId) => {
-  console.log('Window closed:', windowId);
+  console.log("Window closed:", windowId);
   // Session data persists even after window closes
 });

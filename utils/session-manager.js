@@ -1,5 +1,5 @@
-import { StorageManager } from './storage.js';
-import { generateId } from './helpers.js';
+import { StorageManager } from "./storage.js";
+import { generateId } from "./helpers.js";
 
 /**
  * Session Manager - handles session lifecycle and operations
@@ -8,7 +8,7 @@ export class SessionManager {
   /**
    * Create a new session
    */
-  static async createSession(windowId, name, taskDescription = '') {
+  static async createSession(windowId, name, taskDescription = "") {
     const session = {
       id: generateId(),
       windowId: windowId,
@@ -18,12 +18,16 @@ export class SessionManager {
       updatedAt: Date.now(),
       contextItems: [],
       optimizationHistory: [],
-      status: 'active'
+      status: "active",
+      // New fields for incremental prompt building
+      currentPrompt: null,
+      promptVersion: 0,
+      lastOptimizedContextIds: [],
     };
 
     await StorageManager.saveSession(session);
     await StorageManager.setActiveSession(windowId, session.id);
-    
+
     return session;
   }
 
@@ -54,13 +58,13 @@ export class SessionManager {
   static async updateSession(sessionId, updates) {
     const session = await StorageManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     const updatedSession = {
       ...session,
       ...updates,
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     };
 
     await StorageManager.saveSession(updatedSession);
@@ -73,13 +77,13 @@ export class SessionManager {
   static async addContextItem(sessionId, contextItem) {
     const session = await StorageManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     const item = {
       id: generateId(),
       ...contextItem,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     session.contextItems.push(item);
@@ -95,10 +99,12 @@ export class SessionManager {
   static async removeContextItem(sessionId, itemId) {
     const session = await StorageManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
-    session.contextItems = session.contextItems.filter(item => item.id !== itemId);
+    session.contextItems = session.contextItems.filter(
+      (item) => item.id !== itemId
+    );
     session.updatedAt = Date.now();
 
     await StorageManager.saveSession(session);
@@ -111,16 +117,23 @@ export class SessionManager {
   static async addOptimizationResult(sessionId, result) {
     const session = await StorageManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     const optimizationResult = {
       id: generateId(),
       ...result,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     session.optimizationHistory.push(optimizationResult);
+
+    // Update current prompt and tracking
+    session.currentPrompt = result.optimizedPrompt;
+    session.promptVersion = (session.promptVersion || 0) + 1;
+    session.lastOptimizedContextIds = session.contextItems.map(
+      (item) => item.id
+    );
     session.updatedAt = Date.now();
 
     await StorageManager.saveSession(session);
@@ -128,10 +141,53 @@ export class SessionManager {
   }
 
   /**
+   * Get new context items that haven't been optimized yet
+   */
+  static async getNewContextItems(sessionId) {
+    const session = await StorageManager.getSession(sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const lastOptimizedIds = session.lastOptimizedContextIds || [];
+    const newItems = session.contextItems.filter(
+      (item) => !lastOptimizedIds.includes(item.id)
+    );
+
+    return newItems;
+  }
+
+  /**
+   * Check if session has unoptimized context
+   */
+  static async hasNewContext(sessionId) {
+    const newItems = await this.getNewContextItems(sessionId);
+    return newItems.length > 0;
+  }
+
+  /**
+   * Reset current prompt (force full rebuild on next optimization)
+   */
+  static async resetCurrentPrompt(sessionId) {
+    const session = await StorageManager.getSession(sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    session.currentPrompt = null;
+    session.promptVersion = 0;
+    session.lastOptimizedContextIds = [];
+    session.updatedAt = Date.now();
+
+    await StorageManager.saveSession(session);
+    return true;
+  }
+
+  /**
    * Archive a session
    */
   static async archiveSession(sessionId) {
-    return await this.updateSession(sessionId, { status: 'archived' });
+    return await this.updateSession(sessionId, { status: "archived" });
   }
 
   /**
@@ -148,7 +204,7 @@ export class SessionManager {
     // Verify session exists
     const session = await StorageManager.getSession(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     await StorageManager.setActiveSession(windowId, sessionId);
@@ -163,7 +219,7 @@ export class SessionManager {
       const window = await chrome.windows.getCurrent();
       return window.id;
     } catch (error) {
-      console.error('Failed to get current window:', error);
+      console.error("Failed to get current window:", error);
       return null;
     }
   }

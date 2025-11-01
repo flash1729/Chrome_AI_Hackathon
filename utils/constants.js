@@ -40,6 +40,7 @@ export const MessageTypes = {
   OPTIMIZATION_STATUS: "optimization_status",
   OPTIMIZATION_COMPLETE: "optimization_complete",
   OPTIMIZATION_ERROR: "optimization_error",
+  RESET_PROMPT: "reset_prompt",
 
   // Storage
   STORAGE_CHANGED: "storage_changed",
