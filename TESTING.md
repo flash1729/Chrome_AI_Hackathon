@@ -40,8 +40,8 @@
 - [ ] Enter task description
 - [ ] Task description is saved
 - [ ] Task description persists across tab switches
-- [ ] Optimize button enables when task + context present
-- [ ] Optimize button disabled when task or context missing
+- [ ] Optimize button enables when task is present (context is optional)
+- [ ] Optimize button disabled when task is missing
 
 ## Optimization Flow Tests
 

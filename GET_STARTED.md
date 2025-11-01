@@ -94,9 +94,9 @@ Follow these steps to get your Smart Context Generator extension up and running!
    ```
    Help me fix a bug in my JavaScript code where the API call times out
    ```
-2. Notice the "Optimize Context" button is still disabled
+2. Notice the "Optimize Context" button is now enabled
 
-**✓ Pass**: Task is saved, button still disabled
+**✓ Pass**: Task is saved, button is enabled (context is optional)
 
 ### Test 3: Upload a File
 1. Create a simple text file on your computer:
