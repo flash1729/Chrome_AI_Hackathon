@@ -1,9 +1,7 @@
 import { MessageTypes, ContextItemTypes } from '../utils/constants.js';
-import { formatDate, getContextItemIcon, copyToClipboard, readFileAsText, validateFile } from '../utils/helpers.js';
-import { StorageManager } from '../utils/storage.js';
+import { getContextItemIcon, copyToClipboard, readFileAsText, validateFile } from '../utils/helpers.js';
 
 // DOM elements
-let apiKeySection, apiKeyInput, saveApiKeyBtn, settingsBtn;
 let sessionSelect, newSessionBtn, taskInput, uploadFileBtn, fileInput;
 let screenshotBtn, extractTabBtn, contextItemsList, contextCount;
 let optimizeBtn, openPageBtn, statusSection, statusText, resultSection, resultContent, copyBtn;
@@ -11,13 +9,11 @@ let optimizeBtn, openPageBtn, statusSection, statusText, resultSection, resultCo
 // Current state
 let currentWindowId = null;
 let currentSession = null;
-let hasApiKey = false;
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
   initializeElements();
   attachEventListeners();
-  await checkApiKey();
   await loadCurrentWindow();
   await loadSessions();
   await loadActiveSession();
@@ -28,10 +24,6 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Initialize DOM element references
  */
 function initializeElements() {
-  apiKeySection = document.getElementById('api-key-section');
-  apiKeyInput = document.getElementById('api-key-input');
-  saveApiKeyBtn = document.getElementById('save-api-key-btn');
-  settingsBtn = document.getElementById('settings-btn');
   sessionSelect = document.getElementById('session-select');
   newSessionBtn = document.getElementById('new-session-btn');
   taskInput = document.getElementById('task-input');
@@ -54,8 +46,6 @@ function initializeElements() {
  * Attach event listeners
  */
 function attachEventListeners() {
-  saveApiKeyBtn.addEventListener('click', handleSaveApiKey);
-  settingsBtn.addEventListener('click', handleSettings);
   sessionSelect.addEventListener('change', handleSessionChange);
   newSessionBtn.addEventListener('click', handleNewSession);
   taskInput.addEventListener('input', handleTaskInput);
@@ -68,104 +58,7 @@ function attachEventListeners() {
   copyBtn.addEventListener('click', handleCopy);
 }
 
-/**
- * Check if API key is set
- */
-async function checkApiKey() {
-  const apiKey = await StorageManager.getApiKey();
-  hasApiKey = !!apiKey;
 
-  if (hasApiKey) {
-    apiKeySection.style.display = 'none';
-  } else {
-    apiKeySection.style.display = 'block';
-    // Disable all functionality until API key is set
-    disableAllControls();
-  }
-}
-
-/**
- * Handle save API key
- */
-async function handleSaveApiKey() {
-  const apiKey = apiKeyInput.value.trim();
-
-  if (!apiKey) {
-    showError('Please enter an API key');
-    return;
-  }
-
-  if (!apiKey.startsWith('AIza')) {
-    showError('Invalid API key format. Gemini API keys start with "AIza"');
-    return;
-  }
-
-  try {
-    await StorageManager.saveApiKey(apiKey);
-    hasApiKey = true;
-    apiKeySection.style.display = 'none';
-    apiKeyInput.value = '';
-    enableAllControls();
-    showSuccess('API key saved successfully!');
-  } catch (error) {
-    console.error('Failed to save API key:', error);
-    showError('Failed to save API key');
-  }
-}
-
-/**
- * Handle settings button
- */
-function handleSettings() {
-  const action = confirm('Do you want to update your API key?\n\nClick OK to update, Cancel to remove it.');
-
-  if (action) {
-    apiKeySection.style.display = 'block';
-  } else {
-    handleRemoveApiKey();
-  }
-}
-
-/**
- * Handle remove API key
- */
-async function handleRemoveApiKey() {
-  const confirm = window.confirm('Are you sure you want to remove your API key?');
-  if (!confirm) return;
-
-  try {
-    await StorageManager.removeApiKey();
-    hasApiKey = false;
-    apiKeySection.style.display = 'block';
-    disableAllControls();
-    showSuccess('API key removed');
-  } catch (error) {
-    console.error('Failed to remove API key:', error);
-    showError('Failed to remove API key');
-  }
-}
-
-/**
- * Disable all controls
- */
-function disableAllControls() {
-  sessionSelect.disabled = true;
-  newSessionBtn.disabled = true;
-  taskInput.disabled = true;
-  uploadFileBtn.disabled = true;
-  screenshotBtn.disabled = true;
-  extractTabBtn.disabled = true;
-  optimizeBtn.disabled = true;
-}
-
-/**
- * Enable all controls
- */
-function enableAllControls() {
-  sessionSelect.disabled = false;
-  newSessionBtn.disabled = false;
-  // Other controls will be enabled based on session state
-}
 
 /**
  * Load current window ID
@@ -612,9 +505,4 @@ function showError(message) {
   alert('❌ ' + message);
 }
 
-/**
- * Show success message
- */
-function showSuccess(message) {
-  alert('✅ ' + message);
-}
+
